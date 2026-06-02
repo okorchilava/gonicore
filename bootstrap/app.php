@@ -454,10 +454,29 @@ $router->group('/manage', static function (Router $r): void {
     $r->post('/widgets/{id}/toggle',     [ManageController::class, 'widgetToggle']);
 
     // Gallery / media
-    $r->get('/gallery',                  [MediaController::class, 'show']);
-    $r->get('/gallery/json',             [MediaController::class, 'show']);
-    $r->post('/gallery/upload',          [MediaController::class, 'upload']);
-    $r->post('/gallery/{id}/delete',     [MediaController::class, 'destroy']);
+    $r->get('/gallery',                  [ManageController::class, 'galleryList']);
+    $r->get('/gallery/json',             [ManageController::class, 'galleryJson']);
+    $r->post('/gallery/upload',          [ManageController::class, 'galleryUpload']);
+    $r->post('/gallery/{id}/delete',     [ManageController::class, 'galleryDelete']);
+
+    // Plugins
+    $r->get('/plugins',                  [ManageController::class, 'pluginsList']);
+    $r->post('/plugins/upload',          [ManageController::class, 'pluginUpload']);
+    $r->post('/plugins/{slug}/activate', [ManageController::class, 'pluginActivate']);
+    $r->post('/plugins/{slug}/deactivate',[ManageController::class, 'pluginDeactivate']);
+    $r->post('/plugins/{slug}/delete',   [ManageController::class, 'pluginDelete']);
+
+    // Settings
+    $r->get('/settings',                 [ManageController::class, 'settingsForm']);
+    $r->post('/settings',                [ManageController::class, 'settingsSave']);
+
+    // Profile
+    $r->get('/profile',                  [ManageController::class, 'profileForm']);
+    $r->post('/profile',                 [ManageController::class, 'profileSave']);
+
+    // Notifications
+    $r->post('/notifications/{id}/read', [ManageController::class, 'notificationRead']);
+    $r->post('/notifications/read-all',  [ManageController::class, 'notificationReadAll']);
 
 });
 
