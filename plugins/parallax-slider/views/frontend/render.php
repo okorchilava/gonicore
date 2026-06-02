@@ -121,7 +121,7 @@ $jsonCfg    = json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLA
     </div>
 
     <!-- Navigation arrows -->
-    <?php if (!empty($settings['show_arrows'])): ?>
+    <?php if (!empty($settings['show_arrows']) && count($slidesData) > 1): ?>
     <button class="ps-arrow ps-arrow-prev" aria-label="Previous"
         style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:50;background:rgba(0,0,0,.45);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:18px;cursor:pointer;transition:background .15s;backdrop-filter:blur(4px)"
         onmouseover="this.style.background='rgba(0,0,0,.7)'" onmouseout="this.style.background='rgba(0,0,0,.45)'">
