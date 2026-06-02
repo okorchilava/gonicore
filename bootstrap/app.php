@@ -446,13 +446,11 @@ $router->group('/manage', static function (Router $r): void {
     $r->post('/posts/{id}/translate/{code}', [LanguageController::class, 'translateSave']);
 
     // Widgets
-    $r->get('/widgets',                  [WidgetController::class, 'index']);
-    $r->get('/widgets/area/{slug}',      [WidgetController::class, 'area']);
-    $r->post('/widgets',                 [WidgetController::class, 'store']);
-    $r->post('/widgets/{id}',            [WidgetController::class, 'update']);
-    $r->post('/widgets/{id}/delete',     [WidgetController::class, 'destroy']);
-    $r->post('/widgets/{id}/toggle',     [WidgetController::class, 'toggle']);
-    $r->post('/widgets/reorder',         [WidgetController::class, 'reorder']);
+    $r->get('/widgets',                  [ManageController::class, 'widgetsList']);
+    $r->post('/widgets',                 [ManageController::class, 'widgetCreate']);
+    $r->post('/widgets/{id}',            [ManageController::class, 'widgetUpdate']);
+    $r->post('/widgets/{id}/delete',     [ManageController::class, 'widgetDelete']);
+    $r->post('/widgets/{id}/toggle',     [ManageController::class, 'widgetToggle']);
 
     // Gallery / media
     $r->get('/gallery',                  [MediaController::class, 'show']);
