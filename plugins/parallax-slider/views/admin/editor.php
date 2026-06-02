@@ -972,8 +972,8 @@ function collectSettings() {
 function showLeftTab(name, el) {
     document.querySelectorAll('.ps-ltab').forEach(function(t){ t.classList.remove('active'); });
     el.classList.add('active');
-    document.getElementById('ps-slides-list').style.display  = name==='slides'   ? '' : 'none';
-    document.getElementById('ps-left-settings').style.display= name==='settings' ? '' : 'none';
+    document.getElementById('ps-slides-list').style.display   = name==='slides'   ? 'block' : 'none';
+    document.getElementById('ps-left-settings').style.display = name==='settings' ? 'block' : 'none';
 }
 
 // ─── Preview ──────────────────────────────────────────────────────────────────

@@ -1,9 +1,9 @@
 <?php
 /**
- * Parallax Slider — Admin List
+ * GoniSlider — Admin List
  * Variables: $sliders, $base, $success, $error
  */
-$pageTitle = 'Parallax Sliders';
+$pageTitle = 'GoniSlider';
 $activeNav = 'sliders';
 ob_start(); ?>
 <button onclick="document.getElementById('createModal').style.display='flex'" class="topbar-btn">
@@ -36,7 +36,7 @@ ob_start(); ?>
 <div style="text-align:center;padding:80px 20px;color:var(--muted)">
     <div style="font-size:52px;margin-bottom:16px;opacity:.3">🎞</div>
     <h3 style="color:var(--text);margin-bottom:8px">No sliders yet</h3>
-    <p style="margin-bottom:20px">Create your first parallax slider with layers and effects.</p>
+    <p style="margin-bottom:20px">Create your first GoniSlider with layers and effects.</p>
     <button onclick="document.getElementById('createModal').style.display='flex'" class="btn btn-primary">+ Create Slider</button>
 </div>
 <?php else: ?>

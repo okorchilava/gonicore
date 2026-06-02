@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace ParallaxSlider;
+namespace GoniSlider;
 
 use GoniCore\Core\Http\Request;
 use GoniCore\Core\Http\Response;
