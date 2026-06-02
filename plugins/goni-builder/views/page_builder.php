@@ -17,11 +17,18 @@ include $_partialsDir . '/header.php';
 ?>
 
 <style>
-/* ── Builder sections ────────────────────────────── */
-.gb-page{width:100%}
+/* ── Builder page wrapper ────────────────────────── */
+.gb-page{width:100%;padding-top:72px}
+
+/* ── Sections ────────────────────────────────────── */
 .gb-section{width:100%;position:relative}
-.gb-section-inner{display:flex;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:0 20px}
-.gb-full-width>.gb-section-inner{max-width:100%;padding:0}
+.gb-section-inner{display:flex;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:0 20px;box-sizing:border-box}
+
+/* Full-width: remove all constraints */
+.gb-full-width{width:100%}
+.gb-full-width>.gb-section-inner{max-width:100%!important;padding:0!important;width:100%}
+.gb-full-width .gb-column{padding:0!important;box-sizing:border-box}
+
 .gb-column{padding:0 12px;box-sizing:border-box;min-width:0}
 .gb-heading{margin-bottom:.5em;line-height:1.25}
 .gb-text{line-height:1.75}

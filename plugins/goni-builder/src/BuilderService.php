@@ -195,12 +195,13 @@ final class BuilderService
 
     private function renderSection(array $s, string $base): string
     {
-        $st  = $s['settings'] ?? [];
-        $cls = 'gb-section' . ($st['full_width'] ?? false ? ' gb-full-width' : '');
+        $st        = $s['settings'] ?? [];
+        $fullWidth = !empty($st['full_width']);
+        $cls       = 'gb-section' . ($fullWidth ? ' gb-full-width' : '');
 
         $inner = '';
         foreach ($s['columns'] ?? [] as $col) {
-            $inner .= $this->renderColumn($col, $base);
+            $inner .= $this->renderColumn($col, $base, $fullWidth);
         }
 
         // Skip sections whose columns rendered no visible content
@@ -212,10 +213,11 @@ final class BuilderService
         return "<div class=\"{$cls}\" style=\"{$css}\"><div class=\"gb-section-inner\">{$inner}</div></div>";
     }
 
-    private function renderColumn(array $col, string $base): string
+    private function renderColumn(array $col, string $base, bool $fullWidth = false): string
     {
         $w   = (int)($col['width'] ?? 100);
-        $css = "flex:0 0 {$w}%;max-width:{$w}%;padding:0 12px;";
+        $pad = $fullWidth ? '0' : '0 12px';
+        $css = "flex:0 0 {$w}%;max-width:{$w}%;padding:{$pad};";
         if (!empty($col['settings']['padding'])) $css .= "padding:{$col['settings']['padding']};";
 
         $inner = '';
