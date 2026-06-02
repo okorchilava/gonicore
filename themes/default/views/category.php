@@ -23,6 +23,13 @@
     <div class="posts-grid">
       <?php foreach ($posts as $p): ?>
       <article class="post-card">
+        <?php if (!empty($p['featured_image'])): ?>
+        <div class="post-card-img">
+          <a href="<?= e($base) ?>/post/<?= e($p['slug']) ?>" tabindex="-1" aria-hidden="true">
+            <img src="<?= e((string)$p['featured_image']) ?>" alt="<?= e($p['title']) ?>">
+          </a>
+        </div>
+        <?php endif ?>
         <div class="post-card-body">
           <h2 class="post-card-title">
             <a href="<?= e($base) ?>/post/<?= e($p['slug']) ?>">
