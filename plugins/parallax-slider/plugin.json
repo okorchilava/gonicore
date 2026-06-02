@@ -1,0 +1,7 @@
+{
+    "name":        "Parallax Slider",
+    "description": "Full-featured parallax slider with drag-and-drop layer editor, transitions, mouse effects and shortcode support.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

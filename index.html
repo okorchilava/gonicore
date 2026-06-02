@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoniCore | The Native PHP Engine</title>
+    <style>
+        /* Light Theme ცვლადები */
+        :root {
+            --bg-main: #FFFFFF;
+            --bg-secondary: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --c-brand: #10B27C;
+            --c-brand-hover: #0E9C6C;
+            --c-tech-blue: #0EA5E9;
+            --text-main: #0F172A;
+            --text-secondary: #475569;
+            --text-muted: #94A3B8;
+            --border-color: #E2E8F0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* === TOPBAR === */
+        .topbar {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 80px;
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000; display: flex; align-items: center;
+        }
+
+        .topbar .container { display: flex; justify-content: space-between; align-items: center; }
+
+        .nav-links { display: flex; gap: 2.5rem; list-style: none; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--text-secondary); font-weight: 500; font-size: 0.95rem; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--text-main); }
+        
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; font-size: 0.95rem;
+            text-decoration: none; transition: all 0.2s ease; cursor: pointer;
+        }
+        .btn-primary { background-color: var(--c-brand); color: #FFFFFF; }
+        .btn-primary:hover { background-color: var(--c-brand-hover); }
+        .btn-outline { background-color: transparent; color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-outline:hover { background-color: var(--bg-secondary); }
+        .hero .btn-outline { color: #e2e8f0; border-color: rgba(226,232,240,0.3); }
+        .hero .btn-outline:hover { background-color: rgba(255,255,255,0.08); }
+
+        /* === 100VH FULL SCREEN HERO SECTION === */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 80px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+            overflow: hidden;
+        }
+
+        /* SVG წვრილი და მკრთალი ხაზების კონტეინერი */
+        .hero-bg-lines {
+            position: absolute;
+            top: 0; right: 0;
+            width: 50vw;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.8; /* გლობალური სიკაშკაშე */
+        }
+
+        /* ხაზების ანიმაციის ლოგიკა */
+        .flow-line {
+            fill: none;
+            stroke-width: 1.5px;
+            stroke-linecap: round;
+            opacity: 0.25; /* მკრთალი ეფექტი */
+            stroke-dasharray: 1200;
+            stroke-dashoffset: 1200;
+            animation: flowAnimation 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .flow-line.green { stroke: var(--c-brand); }
+        .flow-line.blue { stroke: var(--c-tech-blue); }
+
+        /* ასიმეტრიული დაყოვნებები (Delays) ბუნებრივი დინამიკისთვის */
+        .delay-1 { animation-delay: 0s; animation-duration: 9s; }
+        .delay-2 { animation-delay: 1.5s; animation-duration: 7s; }
+        .delay-3 { animation-delay: 3s; animation-duration: 8.5s; }
+        .delay-4 { animation-delay: 0.5s; animation-duration: 8s; }
+        .delay-5 { animation-delay: 2.5s; animation-duration: 9.5s; }
+        .delay-6 { animation-delay: 4s; animation-duration: 7.5s; }
+
+        /* flowAnimation keyframes are injected per-line by JS with random start/end */
+
+        /* Hero კონტენტის იზოლაცია */
+        .hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            width: 100%;
+        }
+
+        .hero-content h1 {
+            font-size: 4.5rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            color: #ffffff;
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            margin-bottom: 2.5rem;
+            max-width: 90%;
+        }
+
+        .hero-cta { display: flex; gap: 1rem; }
+
+        /* API Response Visual */
+        .api-visual {
+            background-color: #0F172A;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(16, 178, 124, 0.15);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            transform: rotateY(-5deg) rotateX(2deg);
+            perspective: 1000px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .api-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem; margin-bottom: 1rem;
+        }
+        .api-method { color: var(--c-brand); font-weight: 700; background: rgba(16, 178, 124, 0.2); padding: 2px 8px; border-radius: 4px; }
+        .api-endpoint { color: #94A3B8; }
+        .api-status { color: #10B27C; font-size: 0.85rem; }
+
+        .json-key { color: #7DD3FC; }
+        .json-string { color: #A7F3D0; }
+        .json-number { color: #FDBA74; }
+        .json-punctuation { color: #94A3B8; }
+
+        /* === BENTO BOX SECTION === */
+        .bento-section {
+            position: relative;
+            z-index: 2;
+            padding: 6rem 0;
+            background-color: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .bento-header { margin-bottom: 3rem; }
+        .bento-header h2 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto auto;
+            gap: 1.5rem;
+        }
+
+        .bento-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transition: box-shadow 0.2s;
+        }
+        .bento-card:hover { box-shadow: var(--shadow-md); }
+
+        .bento-large { grid-column: span 2; }
+        .bento-square { grid-column: span 1; }
+        .bento-wide { grid-column: span 3; display: flex; align-items: center; justify-content: space-between; padding: 2rem 3rem; }
+
+        .bento-card h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+        .bento-card p { color: var(--text-secondary); font-size: 1rem; }
+        
+        .metric { font-size: 4rem; font-weight: 900; color: var(--c-brand); line-height: 1; margin-bottom: 1rem; letter-spacing: -0.05em; }
+
+        /* === FOOTER === */
+        .footer { position: relative; z-index: 2; border-top: 1px solid var(--border-color); background-color: var(--bg-main); padding: 4rem 0 2rem 0; }
+        .footer-content { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3rem; }
+        .footer-brand p { color: var(--text-secondary); margin-top: 1rem; max-width: 300px; font-size: 0.9rem; }
+        .footer-links { display: flex; gap: 4rem; }
+        .link-group h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main); }
+        .link-group ul { list-style: none; }
+        .link-group ul li { margin-bottom: 0.75rem; }
+        .link-group ul a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+        .link-group ul a:hover { color: var(--c-brand); }
+        .footer-bottom { border-top: 1px solid var(--border-color); padding-top: 2rem; display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.85rem; }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .hero-grid { grid-template-columns: 1fr; gap: 2rem; }
+            .hero { padding-top: 120px; padding-bottom: 40px; }
+            .hero-bg-lines { width: 100vw; opacity: 0.4; }
+            .bento-large, .bento-square, .bento-wide { grid-column: span 3; flex-direction: column; text-align: left; align-items: flex-start; }
+            .footer-content { flex-direction: column; gap: 2rem; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="topbar">
+        <div class="container">
+            <a href="/" class="brand-logo" aria-label="GoniCore Home">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="120" height="60">
+                  <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#0F172A" stroke-width="5"/>
+                  <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
+                  <text x="80" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" fill="#0F172A" letter-spacing="-0.5">Goni</text>
+                  <text x="80" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="300" fill="#10B27C" letter-spacing="-0.5">Core</text>
+                </svg>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#architecture">არქიტექტურა</a></li>
+                    <li><a href="#database">უსაფრთხოება</a></li>
+                    <li><a href="#docs">დოკუმენტაცია</a></li>
+                    <li><a href="#github" class="btn btn-outline" style="padding: 0.5rem 1rem;">GitHub</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        
+        <div class="hero-bg-lines">
+            <svg viewBox="0 0 800 800" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <path class="flow-line green delay-1" d="M -200, 400 L 400, 400 A 200 200 0 0 0 600 200 L 600, -200" />
+                <path class="flow-line blue delay-4"  d="M -200, 430 L 400, 430 A 230 230 0 0 0 630 200 L 630, -200" />
+                <path class="flow-line green delay-2" d="M -200, 460 L 400, 460 A 260 260 0 0 0 660 200 L 660, -200" />
+                <path class="flow-line blue delay-5"  d="M -200, 490 L 400, 490 A 290 290 0 0 0 690 200 L 690, -200" />
+                <path class="flow-line green delay-3" d="M -200, 520 L 400, 520 A 320 320 0 0 0 720 200 L 720, -200" />
+                <path class="flow-line blue delay-6"  d="M -200, 550 L 400, 550 A 350 350 0 0 0 750 200 L 750, -200" />
+            </svg>
+        </div>
+
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <h1>Native PHP.<br>ნულოვანი შეფერხება.</h1>
+                <p>GoniCore არის იზოლირებული, Headless არქიტექტურაზე დაფუძნებული ბექენდ ძრავა. დაპროექტებულია მონაცემთა ბაზის მკაცრი უსაფრთხოებისა და აბსოლუტური კონტროლისთვის.</p>
+                
+                <div class="hero-cta">
+                    <a href="#init" class="btn btn-primary">არქიტექტურის ნახვა</a>
+                    <a href="#docs" class="btn btn-outline">API დოკუმენტაცია</a>
+                </div>
+            </div>
+
+            <div class="api-visual">
+                <div class="api-header">
+                    <div>
+                        <span class="api-method">GET</span>
+                        <span class="api-endpoint">/api/v1/core/status</span>
+                    </div>
+                    <span class="api-status">200 OK</span>
+                </div>
+                <div class="api-body">
+<pre><code><span class="json-punctuation">{</span>
+  <span class="json-key">"system"</span><span class="json-punctuation">:</span> <span class="json-string">"GoniCore Engine"</span><span class="json-punctuation">,</span>
+  <span class="json-key">"version"</span><span class="json-punctuation">:</span> <span class="json-string">"1.2.0-stable"</span><span class="json-punctuation">,</span>
+  <span class="json-key">"architecture"</span><span class="json-punctuation">:</span> <span class="json-punctuation">{</span>
+    <span class="json-key">"mode"</span><span class="json-punctuation">:</span> <span class="json-string">"Headless"</span><span class="json-punctuation">,</span>
+    <span class="json-key">"db_layer"</span><span class="json-punctuation">:</span> <span class="json-string">"Native PDO"</span><span class="json-punctuation">,</span>
+    <span class="json-key">"dependencies"</span><span class="json-punctuation">:</span> <span class="json-number">0</span>
+  <span class="json-punctuation">},</span>
+  <span class="json-key">"performance"</span><span class="json-punctuation">:</span> <span class="json-punctuation">{</span>
+    <span class="json-key">"response_time_ms"</span><span class="json-punctuation">:</span> <span class="json-number">12.4</span><span class="json-punctuation">,</span>
+    <span class="json-key">"memory_usage_mb"</span><span class="json-punctuation">:</span> <span class="json-number">2.1</span>
+  <span class="json-punctuation">},</span>
+  <span class="json-key">"security"</span><span class="json-punctuation">:</span> <span class="json-string">"Strict Isolation"</span>
+<span class="json-punctuation">}</span></code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture" class="bento-section">
+        <div class="container">
+            <div class="bento-header">
+                <h2>სისტემური არქიტექტურა</h2>
+            </div>
+
+            <div class="bento-grid">
+                <div class="bento-card bento-large">
+                    <h3>იზოლირებული PDO ფენა</h3>
+                    <p>მონაცემთა ბაზასთან კომუნიკაცია ხდება ექსკლუზიურად სტანდარტიზებული PDO Wrapper-ით. სრულად გამორიცხავს SQL Injection-ის რისკებს და უზრუნველყოფს მოთხოვნების უსაფრთხო მარშრუტიზაციას.</p>
+                </div>
+
+                <div class="bento-card bento-square">
+                    <div class="metric">0</div>
+                    <h3>გარე დამოკიდებულება</h3>
+                    <p>GoniCore დაწერილია სუფთა Native PHP-ზე. არ იყენებს მესამე მხარის ბიბლიოთეკებს, რაც ზრდის სისტემის უსაფრთხოებას.</p>
+                </div>
+
+                <div class="bento-card bento-wide">
+                    <div>
+                        <h3>Headless API სტანდარტი</h3>
+                        <p style="max-width: 500px;">სისტემა არ არის მიბმული კონკრეტულ Front-end ტექნოლოგიაზე. მუშაობს როგორც დამოუკიდებელი API სერვერი, რომელიც დააბრუნებს მკაცრად ფორმატირებულ JSON მონაცემებს ნებისმიერი კლიენტისთვის.</p>
+                    </div>
+                    <div class="btn btn-outline">არქიტექტურის სქემა</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="100" height="50">
+                        <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#0F172A" stroke-width="5"/>
+                        <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
+                        <text x="80" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" fill="#0F172A" letter-spacing="-0.5">Goni</text>
+                        <text x="80" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="300" fill="#10B27C" letter-spacing="-0.5">Core</text>
+                    </svg>
+                    <p>მაღალი წარმადობის, უსაფრთხო ბექენდ არქიტექტურა ენტერპრაიზ გადაწყვეტილებებისთვის.</p>
+                </div>
+                
+                <div class="footer-links">
+                    <div class="link-group">
+                        <h4>სისტემა</h4>
+                        <ul>
+                            <li><a href="#">არქიტექტურა</a></li>
+                            <li><a href="#">უსაფრთხოება</a></li>
+                            <li><a href="#">მარშრუტიზაცია</a></li>
+                        </ul>
+                    </div>
+                    <div class="link-group">
+                        <h4>რესურსები</h4>
+                        <ul>
+                            <li><a href="#">დოკუმენტაცია</a></li>
+                            <li><a href="#">API რეფერენსი</a></li>
+                            <li><a href="#">GitHub რეპოზიტორია</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 GoniCore System. ყველა უფლება დაცულია.</p>
+                <p>System Version: 1.2.0-stable</p>
+            </div>
+        </div>
+    </footer>
+
+
+<script>
+(function () {
+  var lines = document.querySelectorAll('.flow-line');
+  var sheet = document.createElement('style');
+  document.head.appendChild(sheet);
+
+  lines.forEach(function (line, i) {
+    var maxOffset = 1400;
+    var start = Math.round((Math.random() * 2 - 1) * maxOffset);
+    var end   = Math.round((Math.random() * 2 - 1) * maxOffset);
+    // ensure start and end differ meaningfully
+    while (Math.abs(end - start) < 600) {
+      end = Math.round((Math.random() * 2 - 1) * maxOffset);
+    }
+    var name = 'fl' + i + '_' + Date.now();
+    sheet.textContent +=
+      '@keyframes ' + name + ' {' +
+        '0%   { stroke-dashoffset: ' + start + '; }' +
+        '100% { stroke-dashoffset: ' + end   + '; }' +
+      '}';
+    // preserve existing duration/delay, only replace animation-name
+    var computed = getComputedStyle(line);
+    var dur  = computed.animationDuration  || '8s';
+    var del  = computed.animationDelay     || '0s';
+    line.style.animation = name + ' ' + dur + ' cubic-bezier(0.4,0,0.2,1) ' + del + ' infinite';
+  });
+})();
+</script>
+</body>
+</html>

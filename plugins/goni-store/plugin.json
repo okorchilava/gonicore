@@ -1,0 +1,7 @@
+{
+    "name":        "GoniStore",
+    "description": "WooCommerce-style e-commerce plugin for GoniCore. Products, cart, checkout, orders.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

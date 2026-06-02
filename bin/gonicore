@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * GoniCore CLI Entry Point
+ *
+ * Commands:
+ *   php bin/gonicore install            — first-time setup wizard
+ *   php bin/gonicore migrate            — run pending migrations
+ *   php bin/gonicore migrate:rollback   — roll back last migration
+ *   php bin/gonicore migrate:rollback 3 — roll back last 3 migrations
+ *   php bin/gonicore user:create        — create a new user
+ *   php bin/gonicore help               — list available commands
+ */
+
+$command = $argv[1] ?? 'help';
+
+// ============================================================
+// `install` runs before vendor/ and .env exist, so it
+// bootstraps itself independently.
+// ============================================================
+if ($command === 'install') {
+    $autoloader = __DIR__ . '/../vendor/autoload.php';
+
+    if (!is_file($autoloader)) {
+        echo PHP_EOL;
+        echo '  ERROR: Composer dependencies not installed.' . PHP_EOL;
+        echo '  Run this first:  composer install' . PHP_EOL;
+        echo PHP_EOL;
+        exit(1);
+    }
+
+    require $autoloader;
+
+    (new GoniCore\Core\Console\Commands\InstallCommand(dirname(__DIR__)))
+        ->run(array_slice($argv, 2));
+
+    exit(0);
+}
+
+// ============================================================
+// All other commands go through the normal bootstrap.
+// ============================================================
+require __DIR__ . '/../vendor/autoload.php';
+
+/** @var GoniCore\Core\Console\ConsoleKernel $kernel */
+$kernel = require __DIR__ . '/../bootstrap/console.php';
+
+$kernel->run($argv);

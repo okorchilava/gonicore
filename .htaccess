@@ -1,0 +1,22 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Forward requests that are not already inside public/ to public/
+    RewriteRule ^$               public/index.php [L]
+    RewriteRule ^public/?$       public/index.php [L]
+    RewriteCond %{REQUEST_URI}   !^(.+)/public/
+    RewriteRule ^(.*)$           public/$1        [L,QSA]
+</IfModule>
+
+# Block direct access to sensitive files at root level
+<FilesMatch "\.(env|json|lock|sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>

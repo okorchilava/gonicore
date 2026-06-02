@@ -1,0 +1,7 @@
+{
+    "name":        "Goni Builder",
+    "description": "Visual drag-and-drop page builder for GoniCore. Adds a full-screen Elementor-like editor to page editing.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}
