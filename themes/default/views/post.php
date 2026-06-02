@@ -45,9 +45,9 @@ $hasCover = !empty($post['featured_image']);
 
     <?php if (!($isPage ?? false)): ?>
     <p class="post-byline">
-      Published on <strong><?= e(fmt_date((string)$post['created_at'])) ?></strong>
+      <?= t('post.published') ?> <strong><?= e(fmt_date((string)$post['created_at'])) ?></strong>
       <?php if ($post['updated_at'] !== $post['created_at']): ?>
-        &nbsp;&middot;&nbsp; Updated <?= e(fmt_date((string)$post['updated_at'])) ?>
+        &nbsp;&middot;&nbsp; <?= t('post.updated') ?> <?= e(fmt_date((string)$post['updated_at'])) ?>
       <?php endif ?>
     </p>
     <?php endif ?>
@@ -57,7 +57,7 @@ $hasCover = !empty($post['featured_image']);
 <!-- Post content -->
 <div class="post-content">
   <?php if (!($isPage ?? false)): ?>
-  <a href="<?= e($base) ?>/" class="back-link">← Back to posts</a>
+  <a href="<?= e($base) ?>/" class="back-link"><?= t('post.back') ?></a>
   <?php endif ?>
 
   <?= $renderedContent ?>

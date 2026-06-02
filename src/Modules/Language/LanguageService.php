@@ -7,25 +7,32 @@ namespace GoniCore\Modules\Language;
 use GoniCore\Core\Http\Request;
 
 /**
- * Detects the active language and provides the t() translation function.
+ * Detects the active language and provides the t() translation helper.
+ *
+ * Translation files are loaded from multiple sources in priority order:
+ *   1. Core engine:  /lang/{code}.php
+ *   2. Active theme: /themes/{theme}/lang/{code}.php
+ *   3. Plugins can merge via hook: lang.load.{code}
+ *
+ * Theme translations override core keys with the same name.
  *
  * Detection priority:
- *   1. ?lang= query param  → sets cookie, redirects
- *   2. gc_lang cookie
- *   3. Default language from DB
- *   4. 'en' fallback
+ *   1. gc_lang cookie
+ *   2. Default language from DB
+ *   3. 'en' hard fallback
  */
 final class LanguageService
 {
     private const COOKIE_NAME = 'gc_lang';
     private const COOKIE_DAYS = 365;
+    private const DEFAULT_THEME = 'default';
 
     private static string $currentCode = 'en';
 
-    /** @var array<string, string> */
-    private static array $translations = [];
+    /** @var array<string, array<string,string>>  keyed by language code */
+    private static array $byCode = [];
 
-    private static bool $loaded = false;
+    private static bool $booted = false;
 
     public function __construct(
         private readonly LanguageRepository $repo,
@@ -33,24 +40,18 @@ final class LanguageService
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
 
-    /**
-     * Detect and set the active language for this request.
-     * Call once, early in the request lifecycle (ThemeController, etc.)
-     */
     public function boot(Request $request): void
     {
-        if (self::$loaded) return;
+        if (self::$booted) return;
 
         $cookieLang = $request->cookie(self::COOKIE_NAME);
-        $code = is_string($cookieLang) ? $cookieLang : null;
+        $code = is_string($cookieLang) && $cookieLang !== '' ? $cookieLang : null;
 
-        // Validate against DB
         if ($code) {
             $row = $this->repo->findByCode($code);
             if (!$row || !$row['is_active']) $code = null;
         }
 
-        // Fall back to default
         if (!$code) {
             $default = $this->repo->defaultLanguage();
             $code    = $default ? (string) $default['code'] : 'en';
@@ -58,48 +59,53 @@ final class LanguageService
 
         self::$currentCode = $code;
         $this->loadTranslations($code);
-        self::$loaded = true;
+        self::$booted = true;
     }
 
     // ── Switch ────────────────────────────────────────────────────────────────
 
-    /**
-     * Persist a language choice as a cookie.
-     * Call before any output is sent.
-     */
-    public function switchTo(string $code, string $basePath = '/'): void
+    public function switchTo(string $code, string $basePath = ''): void
     {
         $row = $this->repo->findByCode($code);
         if (!$row || !$row['is_active']) return;
 
-        // Use basePath as cookie scope so subdirectory installs work correctly.
-        $cookiePath = ($basePath !== '' ? rtrim($basePath, '/') . '/' : '/');
+        $cookiePath = $basePath !== '' ? rtrim($basePath, '/') . '/' : '/';
 
         setcookie(
             self::COOKIE_NAME,
             $code,
-            time() + (86400 * self::COOKIE_DAYS),
-            $cookiePath,
-            '',
-            false,
-            false,
+            [
+                'expires'  => time() + 86400 * self::COOKIE_DAYS,
+                'path'     => $cookiePath,
+                'httponly' => false,
+                'samesite' => 'Lax',
+            ],
         );
+
         self::$currentCode = $code;
-        self::$loaded      = false; // allow re-load
+        self::$booted      = false;
     }
 
     // ── Translation ───────────────────────────────────────────────────────────
 
     /**
-     * Translate a key. Falls back to English, then to the key itself.
+     * Translate a key.
+     *
+     * Falls back to English, then returns the key itself.
+     *
+     * @param array<string,string> $replace  Named placeholders, e.g. ['name' => 'John']
      */
     public function t(string $key, array $replace = []): string
     {
-        $value = self::$translations[$key] ?? null;
+        // Current language
+        $value = self::$byCode[self::$currentCode][$key] ?? null;
 
+        // English fallback
         if ($value === null && self::$currentCode !== 'en') {
-            $this->loadTranslations('en');
-            $value = self::$translations[$key] ?? $key;
+            if (!isset(self::$byCode['en'])) {
+                $this->loadTranslations('en');
+            }
+            $value = self::$byCode['en'][$key] ?? null;
         }
 
         $value ??= $key;
@@ -113,32 +119,36 @@ final class LanguageService
 
     // ── Accessors ─────────────────────────────────────────────────────────────
 
-    public function currentCode(): string
-    {
-        return self::$currentCode;
-    }
+    public function currentCode(): string { return self::$currentCode; }
 
-    public function getRepo(): LanguageRepository
-    {
-        return $this->repo;
-    }
+    public function getRepo(): LanguageRepository { return $this->repo; }
 
     /** @return list<array<string,mixed>> */
-    public function activeLanguages(): array
-    {
-        return $this->repo->allActive();
-    }
+    public function activeLanguages(): array { return $this->repo->allActive(); }
 
     // ── Internal ──────────────────────────────────────────────────────────────
 
     private function loadTranslations(string $code): void
     {
-        $file = dirname(__DIR__, 3) . '/lang/' . $code . '.php';
-        if (is_file($file)) {
-            $loaded = require $file;
-            if (is_array($loaded)) {
-                self::$translations = array_merge(self::$translations, $loaded);
-            }
+        if (isset(self::$byCode[$code])) return;
+
+        $root   = dirname(__DIR__, 3);
+        $merged = [];
+
+        // 1. Core / engine translations
+        $coreFile = "{$root}/lang/{$code}.php";
+        if (is_file($coreFile)) {
+            $data = require $coreFile;
+            if (is_array($data)) $merged = array_merge($merged, $data);
         }
+
+        // 2. Active theme translations (override core keys)
+        $themeFile = "{$root}/themes/" . self::DEFAULT_THEME . "/lang/{$code}.php";
+        if (is_file($themeFile)) {
+            $data = require $themeFile;
+            if (is_array($data)) $merged = array_merge($merged, $data);
+        }
+
+        self::$byCode[$code] = $merged;
     }
 }

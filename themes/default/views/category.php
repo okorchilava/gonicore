@@ -15,11 +15,9 @@ foreach ($posts as $_p) {
   <?php if ($catCover): ?>style="background-image:url('<?= e($catCover) ?>');background-size:cover;background-position:center;"<?php endif ?>>
   <?php if ($catCover): ?><div class="post-hero-overlay"></div><?php endif ?>
   <div style="position:relative;z-index:1">
-    <div class="cat-label">Category</div>
+    <div class="cat-label"><?= t('category.label') ?></div>
     <h1 class="cat-hero-name"><?= e($catRow['name']) ?></h1>
-    <p class="cat-hero-count">
-      <?= count($posts) ?> published post<?= count($posts) !== 1 ? 's' : '' ?>
-    </p>
+    <p class="cat-hero-count"><?= count($posts) ?> <?= t('category.articles') ?></p>
   </div>
 </div>
 
@@ -28,7 +26,7 @@ foreach ($posts as $_p) {
 
     <?php if (!empty($posts)): ?>
 
-    <p class="section-heading"><?= e($catRow['name']) ?> Articles</p>
+    <p class="section-heading"><?= e($catRow['name']) ?> <?= t('category.articles') ?></p>
 
     <div class="posts-grid">
       <?php foreach ($posts as $p): ?>
@@ -68,14 +66,14 @@ foreach ($posts as $_p) {
 
     <div class="empty">
       <div class="empty-icon">📂</div>
-      <h3>No posts in this category yet</h3>
-      <p>Posts tagged <strong><?= e($catRow['name']) ?></strong> will appear here once published.</p>
+      <h3><?= t('category.empty') ?></h3>
+      <p><?= e($catRow['name']) ?></p>
     </div>
 
     <?php endif ?>
 
     <div style="margin-top:48px">
-      <a href="<?= e($base) ?>/" class="back-link">← Back to all posts</a>
+      <a href="<?= e($base) ?>/" class="back-link"><?= t('category.back') ?></a>
     </div>
 
   </div>
