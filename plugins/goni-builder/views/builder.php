@@ -718,7 +718,8 @@ function showSectionSettings(sId) {
 
   document.getElementById('gb-right-body').innerHTML = html;
   document.getElementById('gb-right-body').querySelectorAll('input,select,textarea').forEach(function(el){
-    el.addEventListener('input', function(){ gbSectionSettingChanged(sId); });
+    el.addEventListener('input',  function(){ gbSectionSettingChanged(sId); });
+    el.addEventListener('change', function(){ gbSectionSettingChanged(sId); });
   });
 }
 
@@ -757,7 +758,8 @@ function showElementSettings(sId, cId, el) {
   });
   document.getElementById('gb-right-body').innerHTML = html;
   document.getElementById('gb-right-body').querySelectorAll('input,select,textarea').forEach(function(el2){
-    el2.addEventListener('input', function(){ gbElSettingChanged(sId, cId, el.id); });
+    el2.addEventListener('input',  function(){ gbElSettingChanged(sId, cId, el.id); });
+    el2.addEventListener('change', function(){ gbElSettingChanged(sId, cId, el.id); });
   });
 }
 
