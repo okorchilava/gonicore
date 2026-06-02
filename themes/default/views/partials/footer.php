@@ -41,7 +41,7 @@
     <?php
     $footerNav = isset($menuService) ? $menuService->render('footer', 'gc-footer-nav') : null;
     if ($footerNav): ?>
-    <style>.gc-footer-nav{display:flex;list-style:none;gap:16px;margin:0;padding:0}.gc-footer-nav a{color:var(--muted);font-size:12px}.gc-footer-nav a:hover{color:var(--accent)}</style>
+    <style>.gc-footer-nav{display:flex;list-style:none;gap:16px;margin:0;padding:0}.gc-footer-nav a{color:#475569;font-size:12px}.gc-footer-nav a:hover{color:#10B27C}</style>
     <?= $footerNav ?>
     <?php endif ?>
   </div>
