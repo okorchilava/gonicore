@@ -164,7 +164,7 @@ final class ManageController
         $this->logger->log('post.created', $user ? (int) $user['id'] : null, 'post', (int) $id, ['title' => $title]);
         $this->notifications->postCreated($title, $user ? (int) $user['id'] : 0);
 
-        if ($this->settings->get('notify_post_new', '1') === '1') {
+        if ($this->settingsService->get('notify_post_new', '1') === '1') {
             $author  = $user ? htmlspecialchars((string)$user['name'], ENT_QUOTES) : 'Unknown';
             $manageUrl = $request->basePath() . '/manage/posts/' . (int)$id;
             $this->hookManager->doAction('admin.notify',
@@ -392,7 +392,7 @@ final class ManageController
             'password' => password_hash($password, PASSWORD_BCRYPT),
         ]);
 
-        if ($this->settings->get('notify_user_register', '1') === '1') {
+        if ($this->settingsService->get('notify_user_register', '1') === '1') {
             $manageUrl = $request->basePath() . '/manage/users';
             $this->hookManager->doAction('admin.notify',
                 "New user registered: {$name}",
