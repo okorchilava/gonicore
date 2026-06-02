@@ -197,6 +197,7 @@ $container->bind(
     AuthController::class,
     static fn(Container $c): AuthController => new AuthController(
         $c->get(AuthService::class),
+        $c->get(JwtService::class),
         $c->get(Validator::class),
     ),
 );
@@ -227,6 +228,9 @@ $container->bind(
     LoginController::class,
     static fn(Container $c): LoginController => new LoginController(
         $c->get(LoginService::class),
+        $c->get(SessionManager::class),
+        $c->get(CategoryRepository::class),
+        $c->get(HookManager::class),
     ),
 );
 
@@ -234,7 +238,7 @@ $container->bind(
     CategoryController::class,
     static fn(Container $c): CategoryController => new CategoryController(
         $c->get(CategoryRepository::class),
-        $c->get(LoginService::class),
+        $c->get(Validator::class),
     ),
 );
 
@@ -242,7 +246,7 @@ $container->bind(
     MediaController::class,
     static fn(Container $c): MediaController => new MediaController(
         $c->get(MediaService::class),
-        $c->get(LoginService::class),
+        $c->get(QueryBuilder::class),
     ),
 );
 
@@ -264,7 +268,9 @@ $container->bind(
     WidgetController::class,
     static fn(Container $c): WidgetController => new WidgetController(
         $c->get(WidgetService::class),
-        $c->get(LoginService::class),
+        $c->get(WidgetRepository::class),
+        $c->get(WidgetManager::class),
+        $c->get(Validator::class),
     ),
 );
 
@@ -461,8 +467,10 @@ $router->group('/manage', static function (Router $r): void {
 $router->group('/api/v1', static function (Router $r) use ($container): void {
     $auth = $container->get(AuthMiddleware::class);
 
+    $r->post('/auth/register', [AuthController::class, 'register']);
     $r->post('/auth/login',    [AuthController::class, 'login']);
     $r->post('/auth/refresh',  [AuthController::class, 'refresh']);
+    $r->get('/auth/me',        [AuthController::class, 'me'])->middleware($auth);
 
     $r->get('/posts',          [PostController::class, 'index']);
     $r->get('/posts/{id}',     [PostController::class, 'show']);

@@ -54,4 +54,48 @@ final class PostRepository implements RepositoryInterface
     {
         return $this->qb->table(self::TABLE)->where('id', '=', $id)->delete() > 0;
     }
+
+    public function countPublished(): int
+    {
+        $row = $this->qb->table(self::TABLE)
+            ->where('status', '=', 'published')
+            ->where('type', '=', 'post')
+            ->count();
+        return (int) $row;
+    }
+
+    public function paginate(int $page, int $perPage): array
+    {
+        $offset = ($page - 1) * $perPage;
+        return $this->qb->table(self::TABLE)
+            ->where('status', '=', 'published')
+            ->where('type', '=', 'post')
+            ->orderBy('created_at', 'DESC')
+            ->limit($perPage)
+            ->offset($offset)
+            ->get();
+    }
+
+    public function countByCategory(int $categoryId): int
+    {
+        $row = $this->qb->table(self::TABLE)
+            ->where('status', '=', 'published')
+            ->where('type', '=', 'post')
+            ->where('category_id', '=', $categoryId)
+            ->count();
+        return (int) $row;
+    }
+
+    public function paginateByCategory(int $categoryId, int $page, int $perPage): array
+    {
+        $offset = ($page - 1) * $perPage;
+        return $this->qb->table(self::TABLE)
+            ->where('status', '=', 'published')
+            ->where('type', '=', 'post')
+            ->where('category_id', '=', $categoryId)
+            ->orderBy('created_at', 'DESC')
+            ->limit($perPage)
+            ->offset($offset)
+            ->get();
+    }
 }
