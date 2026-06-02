@@ -306,6 +306,22 @@ a:hover { text-decoration: underline; }
     transform: translateY(-3px);
     border-color: #c7d2fe;
 }
+/* ── Post card featured image ───────────────────── */
+.post-card-img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius) var(--radius) 0 0;
+    background: var(--surface);
+}
+.post-card-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .35s ease;
+}
+.post-card:hover .post-card-img img { transform: scale(1.05); }
+
 .post-card-body { padding: 22px 24px 20px; flex: 1; display: flex; flex-direction: column; }
 .post-card-cat {
     font-size: 11px;
@@ -432,6 +448,23 @@ a:hover { text-decoration: underline; }
 .post-byline { font-size: 13.5px; color: #94a3b8; }
 .post-byline strong { color: #cbd5e1; }
 
+/* ── Post featured image (below hero) ───────────── */
+.post-featured-wrap {
+    max-width: 860px;
+    margin: -32px auto 0;
+    padding: 0 24px;
+    position: relative;
+    z-index: 2;
+}
+.post-featured-img {
+    width: 100%;
+    max-height: 480px;
+    object-fit: cover;
+    border-radius: var(--radius);
+    box-shadow: 0 8px 40px rgba(0,0,0,.22);
+    display: block;
+}
+
 /* ── Post body ─────────────────────────────────── */
 .post-content {
     max-width: 780px;
@@ -441,6 +474,7 @@ a:hover { text-decoration: underline; }
     line-height: 1.85;
     color: #1e293b;
 }
+.post-featured-wrap + .post-content { padding-top: 40px; }
 .post-content h2 { font-size: 26px; font-weight: 800; margin: 2em 0 .6em; color: var(--text); letter-spacing: -.4px; }
 .post-content h3 { font-size: 21px; font-weight: 700; margin: 1.8em 0 .5em; color: var(--text); }
 .post-content p  { margin-bottom: 1.5em; }

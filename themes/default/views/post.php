@@ -45,6 +45,15 @@ $renderedContent = isset($shortcodeManager)
   </div>
 </div>
 
+<!-- Featured image -->
+<?php if (!empty($post['featured_image'])): ?>
+<div class="post-featured-wrap">
+  <img src="<?= e((string)$post['featured_image']) ?>"
+       alt="<?= e($post['title']) ?>"
+       class="post-featured-img">
+</div>
+<?php endif ?>
+
 <!-- Post content -->
 <div class="post-content">
   <?php if (!($isPage ?? false)): ?>
