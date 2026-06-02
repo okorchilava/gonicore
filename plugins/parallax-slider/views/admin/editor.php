@@ -176,7 +176,13 @@ input,select,textarea{font-family:inherit}
         <?php $s = $settings; ?>
         <div class="ps-field">
             <label>Height</label>
-            <input type="text" id="cfg-height" value="<?= e($s['height']) ?>" oninput="saveSettings()">
+            <input type="text" id="cfg-height" value="<?= e($s['height']) ?>" oninput="saveSettings()" placeholder="e.g. 100vh, 600px, 80vh">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
+                <?php foreach(['100vh','90vh','80vh','70vh','600px','500px','400px'] as $preset): ?>
+                <button type="button" onclick="document.getElementById('cfg-height').value='<?= $preset ?>';saveSettings()"
+                    style="padding:2px 7px;font-size:11px;border:1px solid var(--panel-b);border-radius:4px;background:var(--panel);color:#94a3b8;cursor:pointer"><?= $preset ?></button>
+                <?php endforeach ?>
+            </div>
         </div>
         <div class="ps-field">
             <label>Transition Effect</label>
@@ -218,7 +224,7 @@ input,select,textarea{font-family:inherit}
 
 <!-- CANVAS -->
 <div id="ps-canvas-wrap">
-    <div id="ps-canvas" style="width:100%;max-width:1200px;height:<?= e($settings['height']) ?>">
+    <div id="ps-canvas" style="width:100%;height:<?= e($settings['height']) ?>">
         <div id="ps-canvas-empty">
             <div style="font-size:40px;margin-bottom:12px;opacity:.3">🎞</div>
             <p style="font-size:14px">Select a slide from the left panel</p>

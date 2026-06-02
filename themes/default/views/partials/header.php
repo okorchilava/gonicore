@@ -289,6 +289,11 @@ a:hover { text-decoration: underline; }
 .tag-pill { display: inline-block; padding: 3px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--muted); text-decoration: none; transition: border-color .15s; }
 .tag-pill:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 
+/* ── Parallax slider: always fill parent width ─── */
+.ps-slider-wrap { display:block; width:100%!important; min-width:0!important; max-width:100%!important; box-sizing:border-box; }
+.gb-html .ps-slider-wrap, .gb-column .ps-slider-wrap { width:100%!important; }
+.gb-full-width .ps-slider-wrap { width:100%!important; }
+
 /* ── Responsive ────────────────────────────────── */
 @media (max-width: 700px) {
     .posts-grid { grid-template-columns: 1fr; }

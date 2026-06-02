@@ -8,7 +8,8 @@ $height    = htmlspecialchars($settings['height'] ?? '560px', ENT_QUOTES);
 $jsonSlides = json_encode(array_values($slidesData), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $jsonCfg    = json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 ?>
-<div class="ps-slider-wrap" id="<?= $psId ?>" style="position:relative;width:100%;height:<?= $height ?>;overflow:hidden;background:#1e293b">
+<style>#<?= $psId ?>{display:block;width:100%!important;min-width:0;max-width:100%!important}</style>
+<div class="ps-slider-wrap" id="<?= $psId ?>" style="position:relative;width:100%;min-width:0;max-width:100%;height:<?= $height ?>;overflow:hidden;background:#1e293b">
 
     <!-- Slides container -->
     <div class="ps-slides" style="position:absolute;inset:0">
