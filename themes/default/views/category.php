@@ -5,12 +5,22 @@
 ?>
 
 <!-- Category hero -->
-<div class="cat-hero">
-  <div class="cat-label">Category</div>
-  <h1 class="cat-hero-name"><?= e($catRow['name']) ?></h1>
-  <p class="cat-hero-count">
-    <?= count($posts) ?> published post<?= count($posts) !== 1 ? 's' : '' ?>
-  </p>
+<?php
+$catCover = null;
+foreach ($posts as $_p) {
+    if (!empty($_p['featured_image'])) { $catCover = $_p['featured_image']; break; }
+}
+?>
+<div class="cat-hero<?= $catCover ? ' cat-hero-cover' : '' ?>"
+  <?php if ($catCover): ?>style="background-image:url('<?= e($catCover) ?>');background-size:cover;background-position:center;"<?php endif ?>>
+  <?php if ($catCover): ?><div class="post-hero-overlay"></div><?php endif ?>
+  <div style="position:relative;z-index:1">
+    <div class="cat-label">Category</div>
+    <h1 class="cat-hero-name"><?= e($catRow['name']) ?></h1>
+    <p class="cat-hero-count">
+      <?= count($posts) ?> published post<?= count($posts) !== 1 ? 's' : '' ?>
+    </p>
+  </div>
 </div>
 
 <div class="wrap">

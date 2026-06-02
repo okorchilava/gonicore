@@ -232,9 +232,16 @@ a:hover { text-decoration: underline; }
 .post-byline { font-size: 13.5px; color: #94a3b8; }
 .post-byline strong { color: #cbd5e1; }
 
-/* ── Post featured image (below hero) ───────────── */
-.post-featured-wrap { max-width: 860px; margin: -32px auto 0; padding: 0 24px; position: relative; z-index: 2; }
-.post-featured-img { width: 100%; max-height: 480px; object-fit: cover; border-radius: var(--radius); box-shadow: 0 8px 40px rgba(0,0,0,.22); display: block; }
+/* ── Post / category hero overlay (when cover image set) ── */
+.post-hero-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.52); z-index: 0; }
+.post-hero-cover { background: #0f172a; }
+.post-hero-cover .post-hero-inner { position: relative; z-index: 1; }
+.cat-hero-cover { position: relative; }
+.cat-hero-cover .post-hero-overlay { border-radius: 0; }
+
+/* ── Page cover image ────────────────────────────── */
+.page-cover-wrap { width: 100%; max-height: 420px; overflow: hidden; }
+.page-cover-img  { width: 100%; max-height: 420px; object-fit: cover; display: block; }
 
 /* ── Post body ─────────────────────────────────── */
 .post-content { max-width: 780px; margin: 0 auto; padding: 48px 24px 64px; font-size: 17px; line-height: 1.85; color: #1e293b; }

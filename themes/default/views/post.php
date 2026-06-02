@@ -18,11 +18,20 @@ if (!empty($lang) && $lang !== 'en' && isset($langService)) {
 $renderedContent = isset($shortcodeManager)
     ? $shortcodeManager->process((string) $post['content'])
     : (string) $post['content'];
+
+$hasCover = !empty($post['featured_image']);
 ?>
 
 <!-- Post hero -->
-<div class="post-hero">
+<div class="post-hero<?= $hasCover ? ' post-hero-cover' : '' ?>"
+  <?php if ($hasCover): ?>
+  style="background-image:url('<?= e((string)$post['featured_image']) ?>');background-size:cover;background-position:center;background-repeat:no-repeat;"
+  <?php endif ?>>
+  <?php if ($hasCover): ?>
+  <div class="post-hero-overlay"></div>
+  <?php else: ?>
   <div class="hero-bg-lines" aria-hidden="true"></div>
+  <?php endif ?>
   <div class="post-hero-inner">
     <?php if (!($isPage ?? false) && $category): ?>
     <div class="post-cat-pill">
@@ -44,15 +53,6 @@ $renderedContent = isset($shortcodeManager)
     <?php endif ?>
   </div>
 </div>
-
-<!-- Featured image -->
-<?php if (!empty($post['featured_image'])): ?>
-<div class="post-featured-wrap">
-  <img src="<?= e((string)$post['featured_image']) ?>"
-       alt="<?= e($post['title']) ?>"
-       class="post-featured-img">
-</div>
-<?php endif ?>
 
 <!-- Post content -->
 <div class="post-content">
