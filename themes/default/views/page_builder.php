@@ -32,6 +32,7 @@ body{margin:0;padding:0;overflow-x:hidden;align-items:stretch;gap:0}
 /* ── Sections ────────────────────────────────────── */
 .gb-section{width:100%;position:relative;margin:0}
 .gb-section-inner{display:flex;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:0 20px;box-sizing:border-box;width:100%}
+.gb-full-width>.gb-section-inner{max-width:100%!important;width:100%!important;margin:0!important;padding:0!important}
 
 /* Full-width: all constraints removed (also set via inline style in PHP) */
 .gb-full-width{width:100%;overflow:visible}
