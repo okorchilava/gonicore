@@ -23,17 +23,20 @@ include $_partialsDir . '/header.php';
 ?>
 
 <style>
+/* ── Body overrides for builder pages ────────────── */
+body{margin:0;padding:0;overflow-x:hidden;align-items:stretch;gap:0}
+
 /* ── Builder page wrapper ────────────────────────── */
-.gb-page{width:100%;padding-top:72px}
+.gb-page{flex:1;width:100%;padding-top:72px;box-sizing:border-box;margin:0}
 
 /* ── Sections ────────────────────────────────────── */
-.gb-section{width:100%;position:relative}
-.gb-section-inner{display:flex;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:0 20px;box-sizing:border-box}
+.gb-section{width:100%;position:relative;margin:0}
+.gb-section-inner{display:flex;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:0 20px;box-sizing:border-box;width:100%}
 
-/* Full-width: break out of any container constraints */
-.gb-full-width{width:100%}
-.gb-full-width>.gb-section-inner{max-width:100%!important;padding:0!important;width:100%}
-.gb-full-width .gb-column{padding:0!important;box-sizing:border-box}
+/* Full-width: all constraints removed (also set via inline style in PHP) */
+.gb-full-width{width:100%;overflow:visible}
+.gb-full-width>.gb-section-inner{max-width:100%!important;padding:0!important;width:100%!important;margin:0!important}
+.gb-full-width .gb-column{padding:0!important;margin:0!important;box-sizing:border-box}
 
 .gb-column{padding:0 12px;box-sizing:border-box;min-width:0}
 .gb-heading{margin-bottom:.5em;line-height:1.25}

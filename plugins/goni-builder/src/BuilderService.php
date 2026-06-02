@@ -209,8 +209,9 @@ final class BuilderService
             return '';
         }
 
-        $css = $this->sectionCss($st);
-        return "<div class=\"{$cls}\" style=\"{$css}\"><div class=\"gb-section-inner\">{$inner}</div></div>";
+        $css      = $this->sectionCss($st);
+        $innerCss = $fullWidth ? ' style="max-width:100%;padding:0;width:100%;box-sizing:border-box;"' : '';
+        return "<div class=\"{$cls}\" style=\"{$css}\"><div class=\"gb-section-inner\"{$innerCss}>{$inner}</div></div>";
     }
 
     private function renderColumn(array $col, string $base, bool $fullWidth = false): string
@@ -553,7 +554,10 @@ final class BuilderService
             $img  = htmlspecialchars($st['bg_image'], ENT_QUOTES);
             $css .= "background-image:url('{$img}');background-size:cover;background-position:center;";
         }
-        $css .= 'padding:' . ($st['padding'] ?? '60px 0') . ';';
+        // Use stored padding; fall back to 60px 0 only when truly unset (not when explicitly "0" or "0px")
+        $pad = isset($st['padding']) ? trim((string)$st['padding']) : null;
+        if ($pad === null) $pad = '60px 0';
+        $css .= "padding:{$pad};";
         return $css;
     }
 }
