@@ -210,8 +210,14 @@ final class BuilderService
         }
 
         $css      = $this->sectionCss($st);
-        $innerCss = $fullWidth ? ' style="max-width:100%;width:100%;margin:0;padding:0;box-sizing:border-box;"' : '';
-        return "<div class=\"{$cls}\" style=\"{$css}width:100%;margin:0;\"><div class=\"gb-section-inner\"{$innerCss}>{$inner}</div></div>";
+        if ($fullWidth) {
+            $innerCss = ' style="display:flex;flex-wrap:wrap;width:100%;max-width:100%;margin:0;padding:0;box-sizing:border-box;"';
+            $outerExtra = 'width:100%;margin:0;';
+        } else {
+            $innerCss   = '';
+            $outerExtra = '';
+        }
+        return "<div class=\"{$cls}\" style=\"{$css}{$outerExtra}\"><div class=\"gb-section-inner\"{$innerCss}>{$inner}</div></div>";
     }
 
     private function renderColumn(array $col, string $base, bool $fullWidth = false): string
