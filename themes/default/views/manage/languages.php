@@ -25,7 +25,7 @@ $topbarActions = '';
                     <?php foreach ($languages as $lang): ?>
                     <tr>
                         <td>
-                            <?= flag_img((string)$lang['code'], 24, 18) ?>
+                            <span style="font-size:20px;vertical-align:middle;margin-right:4px"><?= e((string)($lang['flag'] ?? '🌐')) ?></span>
                             <strong><?= e((string)$lang['name']) ?></strong>
                             <span style="color:var(--muted);font-size:12px;margin-left:6px"><?= e((string)$lang['native']) ?></span>
                         </td>

@@ -470,7 +470,14 @@ a:hover { text-decoration: underline; }
     font-family: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
     font-size: .88em;
 }
-.post-content img { border-radius: var(--radius); margin: 1em 0; }
+.post-content :not(pre) > code {
+    background: #f1f5f9;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #be185d;
+}
+.post-content img { max-width: 100%; border-radius: var(--radius); margin: 1em 0; }
+.post-content hr  { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
 .post-content table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; font-size: 15px; }
 .post-content th, .post-content td { border: 1px solid var(--border); padding: 10px 14px; }
 .post-content th { background: var(--surface); font-weight: 700; }
@@ -484,7 +491,41 @@ a:hover { text-decoration: underline; }
 }
 .widget-html, .widget-text { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
 
-/* ── Back to top / misc ────────────────────────── */
+/* ── Back link ─────────────────────────────────── */
+.back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13.5px; font-weight: 600; color: var(--accent);
+    margin-bottom: 40px; padding: 8px 0;
+}
+.back-link:hover { text-decoration: none; color: var(--accent-d); }
+
+/* ── Category header ───────────────────────────── */
+.cat-hero { background: var(--header); color: #fff; padding: 52px 24px; text-align: center; }
+.cat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #818cf8; margin-bottom: 10px; }
+.cat-hero-name { font-size: 36px; font-weight: 900; letter-spacing: -1px; }
+.cat-hero-count { color: #64748b; font-size: 14px; margin-top: 8px; }
+
+/* ── 404 ───────────────────────────────────────── */
+.not-found { text-align: center; padding: 100px 24px; }
+.not-found-code {
+    font-size: 120px; font-weight: 900; line-height: 1;
+    background: linear-gradient(135deg, #c7d2fe, var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 20px;
+}
+.not-found h2 { font-size: 28px; margin-bottom: 12px; }
+.not-found p  { color: var(--muted); margin-bottom: 32px; font-size: 15px; }
+
+/* ── Button ────────────────────────────────────── */
+.btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #fff;
+    padding: 11px 24px; border-radius: 8px;
+    font-weight: 600; font-size: 14px; transition: background .15s;
+}
+.btn:hover { background: var(--accent-d); text-decoration: none; color: #fff; }
+
+/* ── Misc ──────────────────────────────────────── */
 .tag-pill {
     display: inline-block; padding: 3px 10px;
     background: var(--surface); border: 1px solid var(--border);
@@ -492,6 +533,18 @@ a:hover { text-decoration: underline; }
     text-decoration: none; transition: border-color .15s;
 }
 .tag-pill:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 700px) {
+    .posts-grid { grid-template-columns: 1fr; }
+    .gc-header-inner { padding: 0 16px; }
+    .hero, .post-hero, .cat-hero { padding-left: 16px; padding-right: 16px; }
+    .post-content { padding-left: 16px; padding-right: 16px; font-size: 16px; }
+    .wrap { padding: 0 16px; }
+    .gc-nav { gap: 1rem; }
+    .gc-footer-content { flex-direction: column; }
+    .gc-footer-links { flex-direction: column; gap: 24px; }
+}
 </style>
 </head>
 <body>
@@ -619,297 +672,5 @@ document.addEventListener('click', function(e) {
 });
 </script>
 
-</body>
-</html>
-tent :not(pre) > code {
-    background: #f1f5f9;
-    padding: 2px 7px;
-    border-radius: 4px;
-    color: #be185d;
-}
-.post-content img { max-width: 100%; border-radius: 10px; margin: 1em 0; }
-.post-content hr  { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
-
-/* ── Back link ─────────────────────────────────── */
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--accent);
-    margin-bottom: 40px;
-    padding: 8px 0;
-}
-.back-link:hover { text-decoration: none; color: var(--accent-d); }
-
-/* ── Category header ───────────────────────────── */
-.cat-hero {
-    background: var(--header);
-    color: #fff;
-    padding: 52px 24px;
-    text-align: center;
-}
-.cat-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #818cf8;
-    margin-bottom: 10px;
-}
-.cat-hero-name { font-size: 36px; font-weight: 900; letter-spacing: -1px; }
-.cat-hero-count { color: #64748b; font-size: 14px; margin-top: 8px; }
-
-/* ── 404 ───────────────────────────────────────── */
-.not-found     { text-align: center; padding: 100px 24px; }
-.not-found-code {
-    font-size: 120px;
-    font-weight: 900;
-    line-height: 1;
-    background: linear-gradient(135deg, #c7d2fe, var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 20px;
-}
-.not-found h2 { font-size: 28px; margin-bottom: 12px; }
-.not-found p  { color: var(--muted); margin-bottom: 32px; font-size: 15px; }
-
-/* ── Button ────────────────────────────────────── */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--accent);
-    color: #fff;
-    padding: 11px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 14px;
-    transition: background .15s;
-}
-.btn:hover { background: var(--accent-d); text-decoration: none; color: #fff; }
-
-/* ── Responsive ────────────────────────────────── */
-@media (max-width: 700px) {
-    .posts-grid { grid-template-columns: 1fr; }
-    .gc-header-inner { padding: 0 16px; }
-    .hero, .post-hero, .cat-hero { padding-left: 16px; padding-right: 16px; }
-    .post-content { padding-left: 16px; padding-right: 16px; font-size: 16px; }
-    .wrap { padding: 0 16px; }
-    .hero-bg-lines { width: 100%; opacity: 0.3; }
-    .gc-nav { gap: 1rem; }
-    .gc-footer-links { flex-direction: column; gap: 24px; }
-}
-</style>
-</head>
-<body>
-
-<!-- ── Header ───────────────────────────────────── -->
-<header class="gc-header">
-  <div class="gc-header-inner">
-    <a href="<?= e((string)($base ?? '')) ?>/" class="gc-logo" aria-label="<?= e((string)($siteName ?? 'GoniCore')) ?> Home">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="110" height="55">
-        <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#0F172A" stroke-width="5"/>
-        <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
-        <text x="80" y="46" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="900" fill="#0F172A" letter-spacing="-0.5">Goni</text>
-        <text x="80" y="74" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="300" fill="#10B27C" letter-spacing="-0.5">Core</text>
-      </svg>
-    </a>
-    <nav>
-      <?php
-      global $menuServiceInstance;
-      $_primaryNav = ($menuServiceInstance instanceof \GoniCore\Modules\Menu\MenuService)
-          ? $menuServiceInstance->render('primary', 'gc-nav')
-          : '';
-      if ($_primaryNav): echo $_primaryNav;
-      else: ?>
-      <ul class="gc-nav">
-        <li><a href="<?= e($base) ?>/">Home</a></li>
-        <?php foreach ($categories as $cat): ?>
-        <li><a href="<?= e($base) ?>/category/<?= e($cat['slug']) ?>"><?= e($cat['name']) ?></a></li>
-        <?php endforeach ?>
-      </ul>
-      <?php endif ?>
-    </nav>
-
-    <?php if (!empty($languages) && count($languages) > 1): ?>
-    <?php $currentLang = array_values(array_filter($languages, fn($l) => $l['code'] === ($lang ?? 'en')))[0] ?? $languages[0]; ?>
-    <div class="lang-switcher">
-      <button class="lang-btn" id="langBtn" type="button">
-        <?= flag_img((string)$currentLang['code'], 20, 15) ?>
-        <span><?= strtoupper(e((string)$currentLang['code'])) ?></span>
-        <span style="font-size:9px;opacity:.6">▼</span>
-      </button>
-      <div class="lang-dropdown" id="langDropdown">
-        <?php foreach ($languages as $l): ?>
-        <a href="<?= e($base) ?>/lang/<?= e((string)$l['code']) ?>"
-           class="lang-option <?= $l['code'] === ($lang ?? 'en') ? 'active' : '' ?>">
-          <?= flag_img((string)$l['code'], 20, 15) ?>
-          <span><?= e((string)$l['native']) ?></span>
-        </a>
-        <?php endforeach ?>
-      </div>
-    </div>
-    <?php endif ?>
-  </div>
-</header>
-
-<script>
-(function(){
-  var btn  = document.getElementById('langBtn');
-  var drop = document.getElementById('langDropdown');
-  if (!btn || !drop) return;
-  btn.addEventListener('click', function(e){
-    e.stopPropagation();
-    drop.classList.toggle('show');
-  });
-  document.addEventListener('click', function(){ drop.classList.remove('show'); });
-})();
-</script>
-
-<!-- ── Content ──────────────────────────────────── -->
-<main class="gc-main">
-  <?= $content ?>
-</main>
-
-<!-- ── Footer ───────────────────────────────────── -->
-<?php
-// Resolve WidgetService once for use in layout widget areas
-$_ws = null;
-if (class_exists(\GoniCore\Modules\Widget\WidgetService::class)) {
-    global $widgetServiceInstance;
-    $_ws = $widgetServiceInstance ?? null;
-}
-?>
-<footer class="gc-footer">
-  <?php if ($_ws): ?>
-  <?php
-    $_fc1 = $_ws->renderArea('footer-col-1');
-    $_fc2 = $_ws->renderArea('footer-col-2');
-    $_fc3 = $_ws->renderArea('footer-col-3');
-    $_hasFooterWidgets = $_fc1 || $_fc2 || $_fc3;
-  ?>
-  <?php if ($_hasFooterWidgets): ?>
-  <div class="gc-footer-widgets">
-    <?php if ($_fc1): ?><div class="gc-footer-widget-col"><?= $_fc1 ?></div><?php endif ?>
-    <?php if ($_fc2): ?><div class="gc-footer-widget-col"><?= $_fc2 ?></div><?php endif ?>
-    <?php if ($_fc3): ?><div class="gc-footer-widget-col"><?= $_fc3 ?></div><?php endif ?>
-  </div>
-  <?php endif ?>
-  <?php endif ?>
-
-  <div class="gc-footer-content">
-    <div class="gc-footer-brand">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="100" height="50">
-        <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#0F172A" stroke-width="5"/>
-        <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
-        <text x="80" y="46" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="900" fill="#0F172A" letter-spacing="-0.5">Goni</text>
-        <text x="80" y="74" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="300" fill="#10B27C" letter-spacing="-0.5">Core</text>
-      </svg>
-      <p>High-performance, secure backend architecture for enterprise-grade solutions.</p>
-    </div>
-    <div class="gc-footer-links">
-      <?php
-      global $menuServiceInstance;
-      $_footerNav = ($menuServiceInstance instanceof \GoniCore\Modules\Menu\MenuService)
-          ? $menuServiceInstance->render('footer', 'gc-footer-menu')
-          : '';
-      if ($_footerNav):
-      ?>
-      <style>.gc-footer-menu{list-style:none;display:flex;flex-wrap:wrap;gap:8px 20px;padding:0}.gc-footer-menu li a{color:#94a3b8;font-size:13.5px;text-decoration:none}.gc-footer-menu li a:hover{color:var(--accent)}.gc-footer-menu ul{display:none}</style>
-      <?= $_footerNav ?>
-      <?php else: ?>
-      <div class="gc-footer-group">
-        <h4>Navigation</h4>
-        <ul>
-          <li><a href="<?= e($base) ?>/">Home</a></li>
-          <?php foreach ($categories as $cat): ?>
-          <li><a href="<?= e($base) ?>/category/<?= e($cat['slug']) ?>"><?= e($cat['name']) ?></a></li>
-          <?php endforeach ?>
-        </ul>
-      </div>
-      <?php endif ?>
-    </div>
-  </div>
-  <div class="gc-footer-bottom">
-    <span>&copy; <?= date('Y') ?> <?= e((string)($siteName ?? 'GoniCore')) ?>. All rights reserved.</span>
-    <span>Powered by GoniCore</span>
-  </div>
-</footer>
-
-<script>
-(function () {
-  var ns = 'http://www.w3.org/2000/svg';
-  var sheet = document.createElement('style');
-  document.head.appendChild(sheet);
-
-  var durations = [9, 7, 8.5, 8, 9.5, 7.5];
-  var delays    = [0, 1.5, 3, 0.5, 2.5, 4];
-  var colors    = ['#10B27C', '#0EA5E9'];
-
-  /* pick a random point on one of the 4 edges */
-  function edgePoint(W, H, edge) {
-    if (edge === 0) return [0,        Math.random() * H]; // left
-    if (edge === 1) return [W,        Math.random() * H]; // right
-    if (edge === 2) return [Math.random() * W, 0];        // top
-                    return [Math.random() * W, H];        // bottom
-  }
-
-  function r(min, max) { return min + Math.random() * (max - min); }
-
-  document.querySelectorAll('.hero-bg-lines').forEach(function (container) {
-    var W = container.offsetWidth  || window.innerWidth;
-    var H = container.offsetHeight || window.innerHeight;
-
-    var svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
-    svg.setAttribute('xmlns', ns);
-    container.appendChild(svg);
-
-    for (var i = 0; i < 8; i++) {
-      /* pick two different edges so the line actually travels across */
-      var eA = Math.floor(Math.random() * 4);
-      var eB;
-      do { eB = Math.floor(Math.random() * 4); } while (eB === eA);
-
-      var p0 = edgePoint(W, H, eA);
-      var p3 = edgePoint(W, H, eB);
-
-      /* two random control points — biased toward interior for smooth curves */
-      var cp1 = [r(W * 0.1, W * 0.6), r(H * 0.1, H * 0.9)];
-      var cp2 = [r(W * 0.4, W * 0.9), r(H * 0.1, H * 0.9)];
-
-      var d = 'M' + p0[0].toFixed(1) + ',' + p0[1].toFixed(1)
-            + ' C' + cp1[0].toFixed(1) + ',' + cp1[1].toFixed(1)
-            + ' '  + cp2[0].toFixed(1) + ',' + cp2[1].toFixed(1)
-            + ' '  + p3[0].toFixed(1)  + ',' + p3[1].toFixed(1);
-
-      var path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', d);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', colors[i % 2]);
-      path.setAttribute('stroke-width', '1.5');
-      path.setAttribute('stroke-linecap', 'round');
-      path.setAttribute('opacity', '0.3');
-      svg.appendChild(path);
-
-      var len = path.getTotalLength();
-      path.setAttribute('stroke-dasharray', len);
-
-      var name = 'fl' + i + '_' + Date.now();
-      /* +len = line not yet entered; -len = line fully exited */
-      sheet.textContent +=
-        '@keyframes ' + name + '{0%{stroke-dashoffset:' + len + '}100%{stroke-dashoffset:' + (-len) + '}}';
-
-      var dur = durations[i % durations.length];
-      var del = delays[i % delays.length];
-      path.style.animation = name + ' ' + dur + 's linear ' + del + 's infinite';
-    }
-  });
-})();
-</script>
 </body>
 </html>

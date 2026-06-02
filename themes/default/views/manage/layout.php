@@ -705,14 +705,14 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
             ?>
             <div class="notif-wrap" style="margin-right:2px">
                 <button class="lang-btn" id="panelLangBtn" type="button">
-                    <?= flag_img((string)$activePanelLang['code'], 20, 15) ?>
+                    <span style="font-size:16px;line-height:1"><?= e((string)($activePanelLang['flag'] ?? '🌐')) ?></span>
                     <span style="font-size:12px;font-weight:600"><?= strtoupper(e((string)$activePanelLang['code'])) ?></span>
                     <span style="font-size:9px;opacity:.5">▼</span>
                 </button>
                 <div class="lang-dropdown" id="panelLangDropdown" style="min-width:160px">
                     <?php foreach ($panelLangs as $pl): ?>
                     <a href="<?= e($base) ?>/lang/<?= e((string)$pl['code']) ?>" class="lang-option <?= $pl['code'] === ($currentLangCode ?? 'en') ? 'active' : '' ?>">
-                        <?= flag_img((string)$pl['code'], 20, 15) ?>
+                        <span style="font-size:16px;line-height:1"><?= e((string)($pl['flag'] ?? '🌐')) ?></span>
                         <span><?= e((string)$pl['native']) ?></span>
                     </a>
                     <?php endforeach ?>

@@ -177,7 +177,7 @@ $formAction = $isEdit
                    style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:7px;border:1px solid var(--border);text-decoration:none;color:var(--text);transition:background .12s"
                    onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
                     <span style="display:flex;align-items:center;gap:8px">
-                        <?= flag_img((string)$lang['code'], 18, 13) ?>
+                        <span style="font-size:15px;line-height:1"><?= e((string)($lang['flag'] ?? '🌐')) ?></span>
                         <span style="font-size:13px;font-weight:500"><?= e((string)$lang['name']) ?></span>
                     </span>
                     <?php if ($tr): ?>
