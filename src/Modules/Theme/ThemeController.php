@@ -94,11 +94,11 @@ final class ThemeController
             }
         }
 
-        $page    = max(1, (int) $request->query('page', '1'));
-        $perPage = 9;
-        $total   = $this->posts->countPublished();
-        $posts   = $this->posts->paginate($page, $perPage);
-        $pages   = (int) ceil($total / $perPage);
+        $page       = max(1, (int) $request->query('page', '1'));
+        $perPage    = $this->settings->postsPerPage();
+        $total      = $this->posts->countPublished();
+        $posts      = $this->posts->paginate($page, $perPage);
+        $pages      = (int) ceil($total / max(1, $perPage));
         $categories = $this->categories->findAll();
         return $this->view($request, 'home', compact('posts', 'page', 'pages', 'total', 'categories'));
     }
@@ -110,6 +110,18 @@ final class ThemeController
 
         if (!$post || $post['status'] !== 'published') {
             return $this->view($request, '404', []);
+        }
+
+        // If this page is designated as the "posts page", show the blog listing.
+        $postsPageId = $this->settings->postsPageId();
+        if ($postsPageId && (int) $post['id'] === $postsPageId) {
+            $page       = max(1, (int) $request->query('page', '1'));
+            $perPage    = $this->settings->postsPerPage();
+            $total      = $this->posts->countPublished();
+            $posts      = $this->posts->paginate($page, $perPage);
+            $pages      = (int) ceil($total / max(1, $perPage));
+            $categories = $this->categories->findAll();
+            return $this->view($request, 'home', compact('posts', 'page', 'pages', 'total', 'categories'));
         }
 
         $template = (string) ($post['template'] ?? 'default');
