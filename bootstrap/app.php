@@ -5,6 +5,7 @@ declare(strict_types=1);
 use GoniCore\Core\Application;
 use GoniCore\Core\Config\Config;
 use GoniCore\Core\Config\Env;
+use GoniCore\Core\Mail\MailService;
 use GoniCore\Core\Container\Container;
 use GoniCore\Core\Database\Connection;
 use GoniCore\Core\Database\QueryBuilder;
@@ -495,6 +496,27 @@ $pluginLoader->load($pluginDir, $router, $container, $hooks);
 
 // Boot language detection for front-end requests
 $langService = $container->get(LanguageService::class);
+
+// ── Mail service ─────────────────────────────────────────────────────────────
+$container->singleton(
+    MailService::class,
+    static fn(Container $c): MailService => new MailService($c->get(SettingsService::class)),
+);
+
+// Hook: admin.notify — any code / plugin calls this to send admin email
+// Usage: $hooks->doAction('admin.notify', 'Subject', '<p>HTML body</p>')
+// Extended: $hooks->doAction('admin.notify', 'Subject', '<p>HTML</p>', $ctaUrl, $ctaText)
+$hooks->addAction('admin.notify', static function (
+    string  $subject,
+    string  $html,
+    ?string $ctaUrl  = null,
+    ?string $ctaText = null,
+) use ($container): void {
+    /** @var MailService $mailer */
+    $mailer  = $container->get(MailService::class);
+    $body    = $ctaUrl ? $mailer->template($subject, $html, $ctaUrl, $ctaText) : $mailer->template($subject, $html);
+    $mailer->adminNotify($subject, $body);
+}, 10);
 
 // ============================================================
 // 7. Application

@@ -164,6 +164,22 @@ final class ManageController
         $this->logger->log('post.created', $user ? (int) $user['id'] : null, 'post', (int) $id, ['title' => $title]);
         $this->notifications->postCreated($title, $user ? (int) $user['id'] : 0);
 
+        if ($this->settings->get('notify_post_new', '1') === '1') {
+            $author  = $user ? htmlspecialchars((string)$user['name'], ENT_QUOTES) : 'Unknown';
+            $manageUrl = $request->basePath() . '/manage/posts/' . (int)$id;
+            $this->hookManager->doAction('admin.notify',
+                "New post: {$title}",
+                "<p>A new <strong>" . ($status === 'published' ? 'published' : 'draft') . "</strong> post has been created.</p>"
+                . "<table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px'>"
+                . "<tr><td style='padding:6px 12px 6px 0;color:#64748b;font-weight:600;white-space:nowrap'>Title</td><td style='padding:6px 0'>" . htmlspecialchars($title, ENT_QUOTES) . "</td></tr>"
+                . "<tr><td style='padding:6px 12px 6px 0;color:#64748b;font-weight:600'>Author</td><td style='padding:6px 0'>{$author}</td></tr>"
+                . "<tr><td style='padding:6px 12px 6px 0;color:#64748b;font-weight:600'>Status</td><td style='padding:6px 0'>" . htmlspecialchars($status, ENT_QUOTES) . "</td></tr>"
+                . "</table>",
+                $manageUrl,
+                'View Post'
+            );
+        }
+
         return Response::redirect($request->basePath() . '/manage/posts');
     }
 
@@ -375,6 +391,21 @@ final class ManageController
             'role'     => in_array($role, ['admin','editor','viewer']) ? $role : 'viewer',
             'password' => password_hash($password, PASSWORD_BCRYPT),
         ]);
+
+        if ($this->settings->get('notify_user_register', '1') === '1') {
+            $manageUrl = $request->basePath() . '/manage/users';
+            $this->hookManager->doAction('admin.notify',
+                "New user registered: {$name}",
+                "<p>A new user account has been created.</p>"
+                . "<table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px'>"
+                . "<tr><td style='padding:6px 12px 6px 0;color:#64748b;font-weight:600;white-space:nowrap'>Name</td><td style='padding:6px 0'>" . htmlspecialchars($name, ENT_QUOTES) . "</td></tr>"
+                . "<tr><td style='padding:6px 12px 6px 0;color:#64748b;font-weight:600'>Email</td><td style='padding:6px 0'>" . htmlspecialchars($email, ENT_QUOTES) . "</td></tr>"
+                . "<tr><td style='padding:6px 12px 6px 0;color:#64748b;font-weight:600'>Role</td><td style='padding:6px 0'>" . htmlspecialchars($role, ENT_QUOTES) . "</td></tr>"
+                . "</table>",
+                $manageUrl,
+                'View Users'
+            );
+        }
 
         return Response::redirect($request->basePath() . '/manage/users?success=' . urlencode("User \"{$name}\" created."));
     }
