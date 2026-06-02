@@ -19,14 +19,6 @@
   <?php if ($hasWidgets): ?>
   <div class="gc-footer-content">
     <div class="gc-footer-brand">
-      <a href="<?= e($base ?? '') ?>/" style="display:inline-block;margin-bottom:10px" aria-label="Home">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="100" height="50" aria-hidden="true">
-          <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#e2e8f0" stroke-width="5"/>
-          <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
-          <text x="80" y="46" font-family="system-ui" font-size="28" font-weight="900" fill="#f8fafc">Goni</text>
-          <text x="80" y="74" font-family="system-ui" font-size="28" font-weight="300" fill="#10B27C">Core</text>
-        </svg>
-      </a>
       <?php if ($col1): ?><div class="widget-area"><?= $col1 ?></div><?php endif ?>
     </div>
     <div class="gc-footer-links">
@@ -44,6 +36,14 @@
     <style>.gc-footer-nav{display:flex;list-style:none;gap:16px;margin:0;padding:0}.gc-footer-nav a{color:#475569;font-size:12px}.gc-footer-nav a:hover{color:#10B27C}</style>
     <?= $footerNav ?>
     <?php endif ?>
+    <a href="<?= e($base ?? '') ?>/" aria-label="<?= e((string)($siteName ?? 'GoniCore')) ?> Home">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="72" height="36" aria-hidden="true">
+        <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#475569" stroke-width="5"/>
+        <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
+        <text x="80" y="46" font-family="system-ui" font-size="28" font-weight="900" fill="#94a3b8">Goni</text>
+        <text x="80" y="74" font-family="system-ui" font-size="28" font-weight="300" fill="#10B27C">Core</text>
+      </svg>
+    </a>
   </div>
 
 </footer>
