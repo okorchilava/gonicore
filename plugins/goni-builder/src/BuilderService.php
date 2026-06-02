@@ -186,7 +186,8 @@ final class BuilderService
 
         $html = '<div class="gb-page">';
         foreach ($data['sections'] as $section) {
-            $html .= $this->renderSection($section, $basePath);
+            $rendered = $this->renderSection($section, $basePath);
+            if ($rendered !== '') $html .= $rendered;
         }
         $html .= '</div>';
         return $html;
@@ -195,16 +196,20 @@ final class BuilderService
     private function renderSection(array $s, string $base): string
     {
         $st  = $s['settings'] ?? [];
-        $css = $this->sectionCss($st);
         $cls = 'gb-section' . ($st['full_width'] ?? false ? ' gb-full-width' : '');
 
-        $inner = '<div class="gb-section-inner">';
+        $inner = '';
         foreach ($s['columns'] ?? [] as $col) {
             $inner .= $this->renderColumn($col, $base);
         }
-        $inner .= '</div>';
 
-        return "<div class=\"{$cls}\" style=\"{$css}\">{$inner}</div>";
+        // Skip sections whose columns rendered no visible content
+        if (trim(strip_tags($inner)) === '' && !str_contains($inner, '<img') && !str_contains($inner, 'gb-spacer') && !str_contains($inner, 'gb-slider') && empty($st['bg_image'])) {
+            return '';
+        }
+
+        $css = $this->sectionCss($st);
+        return "<div class=\"{$cls}\" style=\"{$css}\"><div class=\"gb-section-inner\">{$inner}</div></div>";
     }
 
     private function renderColumn(array $col, string $base): string
