@@ -67,8 +67,14 @@ final class GcSmsAdminController
     public function settingsSave(Request $r): Response
     {
         if ($rr = $this->guard($r)) return $rr;
-        $this->sms->setSetting('api_key',     trim((string) $r->post('api_key', '')));
-        $this->sms->setSetting('sender_name', trim((string) $r->post('sender_name', '')));
+        // Only update keys actually present in the request, so the API form and
+        // the Webhook form can each save independently without clobbering.
+        foreach (['api_key', 'sender_name', 'webhook_token'] as $k) {
+            $v = $r->post($k);
+            if ($v !== null) {
+                $this->sms->setSetting($k, trim((string) $v));
+            }
+        }
         return Response::redirect($r->basePath() . '/manage/gcsms/settings?saved=1');
     }
 
@@ -199,14 +205,7 @@ final class GcSmsAdminController
         return Response::redirect($r->basePath() . '/manage/gcsms/logs?cleared=1');
     }
 
-    // ── Webhooks / Inbound replies ──────────────────────────────────────────────
-
-    public function webhookRegenerate(Request $r): Response
-    {
-        if ($rr = $this->guard($r)) return $rr;
-        $this->sms->regenerateWebhookToken();
-        return Response::redirect($r->basePath() . '/manage/gcsms/settings?saved=1');
-    }
+    // ── Inbound replies ─────────────────────────────────────────────────────────
 
     public function inbound(Request $r): Response
     {

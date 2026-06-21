@@ -49,7 +49,7 @@ return new class {
         $seed = [
             'api_key'       => '',
             'sender_name'   => '',
-            'webhook_token' => bin2hex(random_bytes(24)),
+            'webhook_token' => '', // pasted by the admin from the gosms.ge panel
         ];
         foreach ($seed as $k => $v) {
             $conn->execute(

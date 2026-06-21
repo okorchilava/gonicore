@@ -42,22 +42,13 @@ final class GcSmsService
 
     // ── Webhooks ────────────────────────────────────────────────────────────────
 
-    /** Get the webhook auth token, generating + persisting one on first use. */
+    /**
+     * The webhook auth token. gosms.ge issues this token and the admin pastes
+     * it into Settings; incoming webhooks are verified against it.
+     */
     public function webhookToken(): string
     {
-        $t = $this->setting('webhook_token');
-        if ($t === '') {
-            $t = bin2hex(random_bytes(24));
-            $this->setSetting('webhook_token', $t);
-        }
-        return $t;
-    }
-
-    public function regenerateWebhookToken(): string
-    {
-        $t = bin2hex(random_bytes(24));
-        $this->setSetting('webhook_token', $t);
-        return $t;
+        return $this->setting('webhook_token');
     }
 
     /** Constant-time check of an incoming X-Webhook-Token header. */

@@ -136,25 +136,31 @@ $whStatus  = $origin . $base . '/gcsms/webhook/status';
     <div class="card-header"><h3>Webhook-ები</h3></div>
     <div class="card-body">
         <p class="gs-tip" style="margin-top:0;margin-bottom:16px">
-            ეს მისამართები მიუთითეთ gosms.ge-ის პანელში. ყველა მოთხოვნა ავთენტიფიცირდება
-            <code>X-Webhook-Token</code> header-ით — ქვემოთ მოცემული ტოკენით.
+            ქვემოთ მოცემული ორი <strong>URL</strong> მიუთითეთ gosms.ge-ის პანელში.
+            ტოკენი, რომელსაც <strong>gosms.ge გაძლევთ</strong>, ჩასვით აქ — ყველა შემომავალი
+            webhook დამოწმდება ამ ტოკენით (<code>X-Webhook-Token</code> header).
         </p>
 
-        <div class="form-group">
-            <label class="form-label">Webhook ტოკენი</label>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input type="text" class="form-input" id="whToken" readonly value="<?= e($whToken) ?>"
-                       style="flex:1;min-width:240px;font-family:monospace">
-                <button type="button" class="btn btn-ghost" onclick="gsCopy('whToken')">კოპირება</button>
-                <form method="POST" action="<?= e($base) ?>/manage/gcsms/webhook/regenerate" style="display:inline">
-                    <button type="button" class="btn btn-ghost"
-                        onclick="gcConfirm(this,'დარწმუნებული ხართ?','ახალი ტოკენის გენერაცია ძველს გათიშავს — gosms.ge-ში თავიდან უნდა მიუთითოთ.','გენერაცია')">
-                        ახლის გენერაცია
-                    </button>
-                </form>
+        <form method="POST" action="<?= e($base) ?>/manage/gcsms/settings">
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Webhook ტოკენი <span style="color:#ef4444">*</span></label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <input type="text" name="webhook_token" class="form-input"
+                           value="<?= e($whToken) ?>" placeholder="ჩასვით gosms.ge-ის მიერ მოცემული ტოკენი"
+                           autocomplete="off" style="flex:1;min-width:240px;font-family:monospace">
+                    <button type="submit" class="btn btn-primary">შენახვა</button>
+                </div>
+                <div class="gs-tip">
+                    <?php if ($whToken !== ''): ?>
+                    <span style="color:#10b981;font-weight:700">✓ ტოკენი მითითებულია</span> — webhook-ები აქტიურია.
+                    <?php else: ?>
+                    <span style="color:#ef4444;font-weight:700">✕ ტოკენი არ არის შეყვანილი</span> — webhook-ები დაბლოკილია, სანამ არ ჩასვამთ gosms.ge-ის ტოკენს.
+                    <?php endif ?>
+                </div>
             </div>
-            <div class="gs-tip">იგზავნება <code>X-Webhook-Token</code> header-ში.</div>
-        </div>
+        </form>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
 
         <div class="form-group">
             <label class="form-label">მოკლე ნომრის უკუკავშირი (Inbound)</label>

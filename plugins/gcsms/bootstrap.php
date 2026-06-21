@@ -75,8 +75,7 @@ $router->group('/manage/gcsms', static function ($r) use ($container): void {
     // Logs
     $r->get('/logs',         [GcSmsAdminController::class, 'logs']);
     $r->post('/logs/clear',  [GcSmsAdminController::class, 'logsClear']);
-    // Webhooks
-    $r->post('/webhook/regenerate', [GcSmsAdminController::class, 'webhookRegenerate']);
+    // Inbound replies
     $r->get('/inbound',             [GcSmsAdminController::class, 'inbound']);
     $r->post('/inbound/clear',      [GcSmsAdminController::class, 'inboundClear']);
 });
