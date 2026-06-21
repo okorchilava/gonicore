@@ -39,6 +39,9 @@ return [
     'nav.plugins'                => 'დანამატები',
     'nav.settings'               => 'პარამეტრები',
     'nav.logs'                   => 'ლოგები',
+    'nav.broadcast'              => 'მაუწყებლობა',
+    'broadcast.send'             => 'გაგზავნა',
+    'broadcast.empty'            => 'ჯერ მაუწყებლობა არ არის.',
     // Dashboard
     'dashboard.title'            => 'მთავარი',
     'dashboard.total_posts'      => 'სულ სტატიები',

@@ -1,0 +1,7 @@
+{
+    "name":        "GC Maintenance Mode",
+    "description": "Put the site into maintenance mode — visitors see a branded 503 page while admins keep full access. Toggle and custom message in Manage → Maintenance.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

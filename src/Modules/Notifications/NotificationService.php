@@ -75,6 +75,39 @@ final class NotificationService
         );
     }
 
+    /**
+     * Admin → all-admins announcement. Shown in the topbar megaphone feed,
+     * deliberately kept OUT of the regular notification bell.
+     */
+    public function broadcast(string $title, ?string $message = null): void
+    {
+        $this->repo->create(
+            type:    'broadcast',
+            title:   $title,
+            message: $message,
+            userId:  null,         // broadcast
+            icon:    '📣',
+        );
+    }
+
+    // ── Broadcast feed (megaphone) ────────────────────────────────────────────
+
+    /** @return list<array<string, mixed>> */
+    public function broadcasts(int $limit = 30): array
+    {
+        return $this->repo->broadcasts($limit);
+    }
+
+    public function broadcastUnreadCount(): int
+    {
+        return $this->repo->broadcastUnreadCount();
+    }
+
+    public function markBroadcastsRead(): void
+    {
+        $this->repo->markBroadcastsRead();
+    }
+
     // ── Delegate read methods ─────────────────────────────────────────────────
 
     public function forUser(int $userId, int $limit = 30): array

@@ -44,6 +44,9 @@ return [
     'nav.plugins'     => 'Plugins',
     'nav.settings'    => 'Settings',
     'nav.logs'        => 'Logs',
+    'nav.broadcast'   => 'Broadcast',
+    'broadcast.send'  => 'Send',
+    'broadcast.empty' => 'No broadcasts yet.',
 
     // ── Admin: Dashboard ────────────────────────────────────────────────────
     'dashboard.title'       => 'Dashboard',

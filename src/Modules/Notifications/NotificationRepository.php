@@ -67,6 +67,7 @@ final class NotificationRepository
 
         $broadcast = $this->qb->table(self::TABLE)
             ->where('user_id', '=', null)
+            ->where('type', '!=', 'broadcast')   // broadcasts have their own megaphone feed
             ->orderBy('created_at', 'DESC')
             ->limit($limit)
             ->get();
@@ -87,9 +88,38 @@ final class NotificationRepository
 
         $broadcast = $this->qb->table(self::TABLE)
             ->where('user_id', '=', null)
+            ->where('type', '!=', 'broadcast')
             ->where('read_at', '=', null)
             ->count();
 
         return $own + $broadcast;
+    }
+
+    // ── Broadcasts (separate megaphone feed, type = 'broadcast') ────────────────
+
+    /** @return list<array<string, mixed>> */
+    public function broadcasts(int $limit = 30): array
+    {
+        return $this->qb->table(self::TABLE)
+            ->where('type', '=', 'broadcast')
+            ->orderBy('created_at', 'DESC')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function broadcastUnreadCount(): int
+    {
+        return $this->qb->table(self::TABLE)
+            ->where('type', '=', 'broadcast')
+            ->where('read_at', '=', null)
+            ->count();
+    }
+
+    public function markBroadcastsRead(): void
+    {
+        $this->qb->table(self::TABLE)
+            ->where('type', '=', 'broadcast')
+            ->where('read_at', '=', null)
+            ->update(['read_at' => date('Y-m-d H:i:s')]);
     }
 }

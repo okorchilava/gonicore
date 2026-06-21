@@ -513,6 +513,10 @@ $router->group('/manage', static function (Router $r): void {
     $r->post('/notifications/{id}/read', [ManageController::class, 'notificationRead']);
     $r->post('/notifications/read-all',  [ManageController::class, 'notificationReadAll']);
 
+    // Broadcast notification
+    $r->get('/broadcast',                [ManageController::class, 'broadcastForm']);
+    $r->post('/broadcast',               [ManageController::class, 'broadcastSend']);
+
 });
 
 // ── REST API (JWT-protected) ──────────────────────────────────────────────────

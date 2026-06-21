@@ -1138,6 +1138,36 @@ final class ManageController
         return Response::redirect($request->basePath() . '/manage');
     }
 
+    // ── Broadcast notification ─────────────────────────────────────────────────
+
+    public function broadcastForm(Request $request): Response
+    {
+        if ($r = $this->guard($request)) return $r;
+        $user   = $this->currentUser();
+        $recent = $this->notifications->broadcasts(20);
+        $this->notifications->markBroadcastsRead();   // viewing clears the megaphone badge
+        return $this->render('broadcast', compact('user', 'recent'), $request);
+    }
+
+    public function broadcastSend(Request $request): Response
+    {
+        if ($r = $this->guard($request)) return $r;
+        $user  = $this->currentUser();
+        $title = trim((string) $request->post('title', ''));
+        $msg   = trim((string) $request->post('message', ''));
+
+        if ($title === '') {
+            $this->flash('Title is required.', 'error');
+            return Response::redirect($request->basePath() . '/manage/broadcast');
+        }
+
+        // Separate "broadcast" feed (topbar megaphone), not the regular bell.
+        $this->notifications->broadcast($title, $msg !== '' ? $msg : null);
+        $this->logger->log('notification.broadcast', $user ? (int) $user['id'] : null, null, null, ['title' => $title]);
+        $this->flash('Broadcast sent to all admins.');
+        return Response::redirect($request->basePath() . '/manage/broadcast');
+    }
+
     // ── Todos (AJAX-friendly POST) ────────────────────────────────────────────
 
     public function todoCreate(Request $request): Response

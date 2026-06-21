@@ -340,6 +340,7 @@ a:hover { text-decoration: underline; }
 <?php if (function_exists('gc_emit')) gc_emit('theme.head'); ?>
 </head>
 <body>
+<?php if (function_exists('gc_emit')) gc_emit('theme.body.top', $base ?? ''); ?>
 
 <!-- ── Site Header ──────────────────────────────────────────── -->
 <header class="gc-header">

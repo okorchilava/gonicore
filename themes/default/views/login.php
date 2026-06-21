@@ -82,17 +82,18 @@ body {
 }
 
 /* ── Card ────────────────────────────────────────── */
+.login-inner {
+    width: 100%;
+    max-width: 400px;
+}
 .login-card {
     background: #fff;
     border-radius: 24px;
-    width: 400px;
-    height: 400px;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding: 0 44px;
+    padding: 44px;
     box-shadow: 0 32px 80px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
-    flex-shrink: 0;
 }
 
 .login-card-title {
@@ -256,8 +257,9 @@ body {
 }
 
 @media (max-width: 460px) {
-    .login-card { width: 100%; height: auto; padding: 40px 28px; }
-    .login-topbar { padding: 18px 24px; }
+    .login-card { padding: 34px 24px; }
+    .login-wrap { padding: 116px 16px 48px; }
+    .login-topbar { padding: 16px 18px; }
 }
 </style>
 </head>
@@ -280,7 +282,7 @@ body {
 </header>
 
 <div class="login-wrap">
-    <div>
+    <div class="login-inner">
         <div class="login-card">
             <h1 class="login-card-title"><?= e(t('login.title')) ?></h1>
             <p class="login-card-sub"><?= e($siteName) ?></p>

@@ -28,8 +28,32 @@ final class LiveChatFrontend
 
     private function endpoint(string $path): string
     {
-        $base = rtrim((string) gc_setting('site_url', ''), '/');
-        return ($base !== '' ? $base : '') . '/gc-chat/' . $path;
+        return $this->appBase() . '/gc-chat/' . $path;
+    }
+
+    /**
+     * Root-relative app base path (subdirectory-aware), e.g. "/goni/GoniCore"
+     * or "" on a virtual host. Derived from the current request so the widget's
+     * AJAX calls are always same-origin — never relies on the `site_url` setting
+     * (which may be empty or point at a different host).
+     */
+    private function appBase(): string
+    {
+        $uri    = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+        $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+        $publicBase = rtrim(str_replace('\\', '/', dirname($script)), '/');   // …/public
+
+        if ($publicBase !== '' && $publicBase !== '.') {
+            if (str_starts_with($uri, $publicBase . '/') || $uri === $publicBase) {
+                return $publicBase;                       // direct /public access
+            }
+            $projectBase = rtrim(dirname($publicBase), '/');
+            if ($projectBase !== '' && $projectBase !== '.'
+                && (str_starts_with($uri, $projectBase . '/') || $uri === $projectBase)) {
+                return $projectBase;                      // root .htaccess rewrite
+            }
+        }
+        return '';                                         // virtual host (docroot = public)
     }
 
     /** Resolve + authorise the conversation from its token. */

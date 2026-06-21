@@ -603,15 +603,41 @@ tr:hover td { background: var(--bg); }
     padding: 9px 20px !important;
 }
 
+/* ── Mobile: burger button + sidebar drawer ──────────── */
+.topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar-burger {
+    display: none; background: none; border: none; cursor: pointer;
+    color: var(--text); padding: 6px; border-radius: 8px; line-height: 0;
+}
+.topbar-burger:hover { background: var(--bg); }
+.sidebar { transition: transform .25s ease; }
+.sidebar-overlay {
+    display: none; position: fixed; inset: 0; z-index: 99;
+    background: rgba(15,23,42,.5); opacity: 0; transition: opacity .2s ease;
+}
+.sidebar-overlay.show { opacity: 1; }
+
 @media (max-width: 1200px) {
     .stat-grid { grid-template-columns: repeat(3, 1fr); }
     .widget-grid { column-count: 2; }
 }
 @media (max-width: 768px) {
-    .sidebar { transform: translateX(-100%); }
+    .sidebar { transform: translateX(-100%); z-index: 200; }
+    .sidebar.open { transform: translateX(0); box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+    .sidebar-overlay.show { display: block; }
     .main-wrap { margin-left: 0; }
+    .topbar { padding: 0 12px; }
+    .topbar-burger { display: flex; }
+    .topbar-title { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-view-site { display: none; }
+    .topbar-profile-info { display: none; }
+    .content { padding: 18px 14px; }
     .stat-grid { grid-template-columns: 1fr 1fr; }
     .widget-grid { column-count: 1; }
+}
+@media (max-width: 420px) {
+    .stat-grid { grid-template-columns: 1fr; }
+    .lang-btn span:nth-child(2) { display: none; }   /* keep just the flag */
 }
 </style>
 </head>
@@ -700,6 +726,7 @@ tr:hover td { background: var(--bg); }
 
     <div class="sidebar-bottom"></div>
 </aside>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <?php
 $_gravatarHash = !empty($user['email'])
@@ -710,7 +737,12 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
 ?>
 <div class="main-wrap">
     <header class="topbar">
-        <div class="topbar-title"><?= e($pageTitle ?? 'Dashboard') ?></div>
+        <div class="topbar-left">
+            <button class="topbar-burger" id="sidebarToggle" type="button" aria-label="Menu" aria-expanded="false">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+            <div class="topbar-title"><?= e($pageTitle ?? 'Dashboard') ?></div>
+        </div>
         <div class="topbar-actions" style="display:flex;align-items:center;gap:10px">
             <?php if (!empty($panelLangs) && count($panelLangs) > 1):
                 $activePanelLang = null;
@@ -735,7 +767,44 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
             <?php endif ?>
             <?= $topbarActions ?? '' ?>
             <?php if (!empty($user)): ?>
-            <a href="<?= e($base) ?>/" target="_blank" class="topbar-btn ghost" style="font-size:12px"><span class="material-symbols-outlined mi-sm">open_in_new</span> <?= e(t('admin.view_site')) ?></a>
+            <a href="<?= e($base) ?>/" target="_blank" class="topbar-btn ghost topbar-view-site" style="font-size:12px"><span class="material-symbols-outlined mi-sm">open_in_new</span> <?= e(t('admin.view_site')) ?></a>
+            <!-- Broadcasts (megaphone) -->
+            <?php
+            $__bcList = []; $__bcUnread = 0;
+            try {
+                $__bcSvc    = \GoniCore\Core\Container\Container::global()->get(\GoniCore\Modules\Notifications\NotificationService::class);
+                $__bcList   = $__bcSvc->broadcasts(15);
+                $__bcUnread = $__bcSvc->broadcastUnreadCount();
+            } catch (\Throwable) {}
+            ?>
+            <div class="notif-wrap">
+                <button class="notif-btn" id="bcBtn" type="button" aria-label="<?= e(t('nav.broadcast')) ?>">
+                    <span class="material-symbols-outlined" style="font-size:18px">campaign</span>
+                    <?php if ($__bcUnread > 0): ?><span class="notif-badge"><?= min((int)$__bcUnread, 99) ?></span><?php endif ?>
+                </button>
+                <div class="notif-dropdown" id="bcDropdown">
+                    <div class="notif-header">
+                        <h4><?= e(t('nav.broadcast')) ?></h4>
+                        <a href="<?= e($base) ?>/manage/broadcast" class="notif-read-all" style="text-decoration:none">+ <?= e(t('broadcast.send')) ?></a>
+                    </div>
+                    <div class="notif-list">
+                        <?php if (!empty($__bcList)): ?>
+                        <?php foreach ($__bcList as $b): ?>
+                        <a href="<?= e($base) ?>/manage/broadcast" class="notif-item <?= empty($b['read_at']) ? 'unread' : '' ?>">
+                            <div class="notif-icon-wrap"><?= e((string)($b['icon'] ?? '📣')) ?></div>
+                            <div class="notif-body">
+                                <div class="notif-title"><?= e((string)$b['title']) ?></div>
+                                <?php if (!empty($b['message'])): ?><div class="notif-msg"><?= e((string)$b['message']) ?></div><?php endif ?>
+                                <div class="notif-time"><?= e(fmt_date((string)$b['created_at'])) ?></div>
+                            </div>
+                        </a>
+                        <?php endforeach ?>
+                        <?php else: ?>
+                        <div class="notif-empty"><div class="notif-empty-icon">📣</div><div><?= e(t('broadcast.empty')) ?></div></div>
+                        <?php endif ?>
+                    </div>
+                </div>
+            </div>
             <!-- Bell -->
             <div class="notif-wrap">
                 <button class="notif-btn" id="notifBtn" type="button">
@@ -816,6 +885,7 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
         </div>
     </header>
     <div class="content">
+        <?php if (function_exists('gc_emit')) gc_emit('manage.content.top', $base); ?>
         <?php if (!empty($flashMsg)): ?>
         <div id="gc-flash" data-msg="<?= e((string)$flashMsg) ?>" data-icon="<?= e((string)($flashIcon ?? 'success')) ?>" style="display:none"></div>
         <?php endif ?>
@@ -923,6 +993,7 @@ window.gcToast = function(message, icon, duration) {
     }
 
     makeToggle('notifBtn',       'notifDropdown');
+    makeToggle('bcBtn',          'bcDropdown');
     makeToggle('profileTrigger', 'profileDropdown');
     makeToggle('panelLangBtn',   'panelLangDropdown');
 
@@ -930,6 +1001,26 @@ window.gcToast = function(message, icon, duration) {
         document.querySelectorAll('.notif-dropdown.show, .profile-dropdown.show, .lang-dropdown.show').forEach(function(el){ el.classList.remove('show'); });
         document.querySelectorAll('.notif-btn.open, .topbar-profile.open, .lang-btn.open').forEach(function(el){ el.classList.remove('open'); });
     });
+})();
+
+/* ── Mobile sidebar drawer (burger menu) ───────────── */
+(function () {
+    var sb = document.querySelector('.sidebar');
+    var ov = document.getElementById('sidebarOverlay');
+    var tg = document.getElementById('sidebarToggle');
+    if (!sb || !tg) return;
+    function setOpen(open) {
+        sb.classList.toggle('open', open);
+        if (ov) ov.classList.toggle('show', open);
+        tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+        document.body.style.overflow = open ? 'hidden' : '';
+    }
+    tg.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!sb.classList.contains('open')); });
+    if (ov) ov.addEventListener('click', function () { setOpen(false); });
+    sb.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () { if (window.innerWidth <= 768) setOpen(false); });
+    });
+    window.addEventListener('resize', function () { if (window.innerWidth > 768) setOpen(false); });
 })();
 </script>
 </body>
