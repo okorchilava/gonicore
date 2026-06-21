@@ -45,7 +45,7 @@ final class LoginService
             $this->setRememberCookie($userId);
         }
 
-        return ['success' => true, 'error' => null];
+        return ['success' => true, 'error' => null, 'user_id' => $userId];
     }
 
     // ── Remember-me ───────────────────────────────────────────────────────────
@@ -63,11 +63,13 @@ final class LoginService
         setcookie(
             self::REMEMBER_COOKIE,
             $userId . '|' . $token,
-            time() + (86400 * self::REMEMBER_DAYS),
-            '/',
-            '',
-            false, // set to true in production (HTTPS)
-            true,  // HttpOnly
+            [
+                'expires'  => time() + (86400 * self::REMEMBER_DAYS),
+                'path'     => '/',
+                'secure'   => SessionManager::isHttps(),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ],
         );
     }
 

@@ -25,6 +25,28 @@ use ReflectionNamedType;
  */
 final class Container implements ContainerInterface
 {
+    // ── Global instance (accessible via gc_container() helper) ────────────────
+
+    private static ?self $globalInstance = null;
+
+    public static function setGlobalInstance(self $instance): void
+    {
+        self::$globalInstance = $instance;
+    }
+
+    public static function global(): self
+    {
+        if (self::$globalInstance === null) {
+            throw new \RuntimeException(
+                'Global Container instance not initialised. '
+                . 'Call Container::setGlobalInstance() in bootstrap.'
+            );
+        }
+        return self::$globalInstance;
+    }
+
+    // ── Storage ───────────────────────────────────────────────────────────────
+
     /** @var array<string, callable(self): mixed> */
     private array $bindings = [];
 

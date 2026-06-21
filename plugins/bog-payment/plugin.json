@@ -1,0 +1,7 @@
+{
+    "name":        "BOG Payment",
+    "description": "Bank of Georgia payment gateway integration for GoniStore.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

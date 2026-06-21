@@ -1,0 +1,7 @@
+{
+    "name":        "TOTP 2FA",
+    "description": "Two-factor authentication using TOTP — works with Google Authenticator, Authy, and any RFC 6238-compatible app.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

@@ -132,6 +132,8 @@ final class AdminController
             'description'       => trim((string)$r->post('description','')),
             'price'             => (float)str_replace(',','.',(string)$r->post('price','0')),
             'sale_price'        => $r->post('sale_price') !== '' ? (float)str_replace(',','.',(string)$r->post('sale_price')) : null,
+            'sale_from'         => trim((string)$r->post('sale_from','')) ?: null,
+            'sale_to'           => trim((string)$r->post('sale_to',''))   ?: null,
             'sku'               => trim((string)$r->post('sku','')),
             'stock'             => $r->post('manage_stock') ? (int)$r->post('stock',0) : null,
             'manage_stock'      => $r->post('manage_stock') ? 1 : 0,

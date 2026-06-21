@@ -7,6 +7,7 @@ namespace GoniCore\Modules\Language;
 use GoniCore\Core\Http\Request;
 use GoniCore\Core\Http\Response;
 use GoniCore\Modules\Login\LoginService;
+use GoniCore\Modules\Login\SessionManager;
 use GoniCore\Modules\Notifications\NotificationService;
 use GoniCore\Modules\Post\PostRepository;
 use GoniCore\Modules\User\UserRepository;
@@ -22,9 +23,36 @@ final class LanguageController
         private readonly LoginService        $auth,
         private readonly NotificationService $notifications,
         private readonly UserRepository      $users,
+        private readonly SessionManager      $sessionMgr,
         private readonly string              $siteName = 'GoniCore',
     ) {
         $this->viewsDir = dirname(__DIR__, 3) . '/themes/default/views/manage';
+    }
+
+    private function flash(string $msg, string $icon = 'success'): void
+    {
+        $this->sessionMgr->flash('gc_msg',  $msg);
+        $this->sessionMgr->flash('gc_icon', $icon);
+    }
+
+    /** Auth + CSRF guard for manage-panel actions. */
+    private function guard(Request $request): ?Response
+    {
+        if (!$this->auth->isLoggedIn()) {
+            return Response::redirect($request->basePath() . '/login');
+        }
+        if ($request->method() === 'POST'
+            && !$this->sessionMgr->verifyCsrf((string) $request->post('_csrf', ''))) {
+            $this->flash('Security token expired — please try again.', 'error');
+            return Response::redirect($request->basePath() . '/manage/languages');
+        }
+        return null;
+    }
+
+    /** Language codes are file names — restrict to safe characters. */
+    private function isValidCode(string $code): bool
+    {
+        return (bool) preg_match('/^[a-z]{2}([_-][a-z0-9]{2,4})?$/i', $code);
     }
 
     // ── Public: switch language ───────────────────────────────────────────────
@@ -46,22 +74,27 @@ final class LanguageController
 
     public function index(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $languages = $this->langRepo->all();
         return $this->render('languages', compact('languages'), $request);
     }
 
     public function store(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
 
         $code   = strtolower(trim((string) $request->post('code', '')));
         $name   = trim((string) $request->post('name', ''));
         $native = trim((string) $request->post('native', ''));
         $flag   = trim((string) $request->post('flag', '🌐'));
 
-        if ($code && $name && $native) {
+        if (!$this->isValidCode($code)) {
+            $this->flash('Invalid language code. Use letters like "en" or "en-us".', 'error');
+        } elseif ($code && $name && $native) {
             $this->langRepo->create($code, $name, $native, $flag);
+            $this->flash('Language added.');
+        } else {
+            $this->flash('Code, name and native name are required.', 'error');
         }
         return Response::redirect($request->basePath() . '/manage/languages');
     }
@@ -70,7 +103,7 @@ final class LanguageController
 
     public function editForm(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $code = (string) $request->getAttribute('code');
         $lang = $this->langRepo->findByCode($code);
         if (!$lang) return Response::redirect($request->basePath() . '/manage/languages');
@@ -79,7 +112,7 @@ final class LanguageController
 
     public function editSave(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $code = (string) $request->getAttribute('code');
 
         $this->langRepo->update($code, [
@@ -87,6 +120,7 @@ final class LanguageController
             'native' => trim((string) $request->post('native', '')),
             'flag'   => trim((string) $request->post('flag', '🌐')),
         ]);
+        $this->flash('Language updated.');
         return Response::redirect($request->basePath() . '/manage/languages');
     }
 
@@ -94,24 +128,31 @@ final class LanguageController
 
     public function setDefault(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $this->langRepo->setDefault((string) $request->getAttribute('code'));
+        $this->flash('Default language changed.');
         return Response::redirect($request->basePath() . '/manage/languages');
     }
 
     public function toggle(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $this->langRepo->toggleActive((string) $request->getAttribute('code'));
+        $this->flash('Language status changed.');
         return Response::redirect($request->basePath() . '/manage/languages');
     }
 
     public function delete(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $code = (string) $request->getAttribute('code');
         $lang = $this->langRepo->findByCode($code);
-        if ($lang && !$lang['is_default']) $this->langRepo->delete($code);
+        if ($lang && !$lang['is_default']) {
+            $this->langRepo->delete($code);
+            $this->flash('Language deleted.');
+        } else {
+            $this->flash('Default language cannot be deleted.', 'error');
+        }
         return Response::redirect($request->basePath() . '/manage/languages');
     }
 
@@ -119,7 +160,7 @@ final class LanguageController
 
     public function translateForm(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $postId = (int) $request->getAttribute('id');
         $code   = (string) $request->getAttribute('code');
         $post   = $this->posts->findById($postId);
@@ -131,7 +172,7 @@ final class LanguageController
 
     public function translateSave(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
         $postId = (int) $request->getAttribute('id');
         $code   = (string) $request->getAttribute('code');
         $title  = trim((string) $request->post('title', ''));
@@ -142,6 +183,7 @@ final class LanguageController
             'content' => trim((string) $request->post('content', '')),
             'status'  => (string) $request->post('status', 'draft'),
         ]);
+        $this->flash('Translation saved.');
         return Response::redirect($request->basePath() . '/manage/posts/' . $postId);
     }
 
@@ -152,11 +194,13 @@ final class LanguageController
      */
     public function fileForm(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
 
         $code = (string) $request->getAttribute('code');
         $lang = $this->langRepo->findByCode($code);
-        if (!$lang) return Response::redirect($request->basePath() . '/manage/languages');
+        if (!$lang || !$this->isValidCode($code)) {
+            return Response::redirect($request->basePath() . '/manage/languages');
+        }
 
         $langDir   = dirname(__DIR__, 3) . '/lang';
         $enFile    = $langDir . '/en.php';
@@ -168,12 +212,9 @@ final class LanguageController
         if (!is_array($enKeys))       $enKeys       = [];
         if (!is_array($translations)) $translations = [];
 
-        $success = $request->query('success');
-        $error   = $request->query('error');
-
         return $this->render(
             'language_file',
-            compact('lang', 'code', 'enKeys', 'translations', 'success', 'error'),
+            compact('lang', 'code', 'enKeys', 'translations'),
             $request
         );
     }
@@ -183,11 +224,13 @@ final class LanguageController
      */
     public function fileSave(Request $request): Response
     {
-        if (!$this->auth->isLoggedIn()) return Response::redirect($request->basePath() . '/login');
+        if ($r = $this->guard($request)) return $r;
 
         $code = (string) $request->getAttribute('code');
         $lang = $this->langRepo->findByCode($code);
-        if (!$lang) return Response::redirect($request->basePath() . '/manage/languages');
+        if (!$lang || !$this->isValidCode($code)) {
+            return Response::redirect($request->basePath() . '/manage/languages');
+        }
 
         $langDir  = dirname(__DIR__, 3) . '/lang';
         $enFile   = $langDir . '/en.php';
@@ -213,8 +256,8 @@ final class LanguageController
                 $lines[] = "    // " . ucfirst($cat);
                 $lastCat = $cat;
             }
-            $escapedKey   = str_replace("'", "\\'", $key);
-            $escapedValue = str_replace("'", "\\'", $value);
+            $escapedKey   = str_replace(['\\', "'"], ['\\\\', "\\'"], $key);
+            $escapedValue = str_replace(['\\', "'"], ['\\\\', "\\'"], $value);
             $lines[] = sprintf("    %-28s => '%s',", "'{$escapedKey}'", $escapedValue);
         }
         $lines[] = "];";
@@ -224,12 +267,11 @@ final class LanguageController
         $written    = file_put_contents($targetFile, $php);
 
         if ($written === false) {
-            $error = urlencode('Failed to write ' . $code . '.php — check directory permissions.');
-            return Response::redirect($request->basePath() . '/manage/languages/' . $code . '/file?error=' . $error);
+            $this->flash('Failed to write ' . $code . '.php — check directory permissions.', 'error');
+        } else {
+            $this->flash('Translations saved successfully.');
         }
-
-        $success = urlencode('Translations saved successfully.');
-        return Response::redirect($request->basePath() . '/manage/languages/' . $code . '/file?success=' . $success);
+        return Response::redirect($request->basePath() . '/manage/languages/' . $code . '/file');
     }
 
     // ── Renderer ──────────────────────────────────────────────────────────────
@@ -238,6 +280,10 @@ final class LanguageController
     private function render(string $template, array $data, Request $request): Response
     {
         require_once dirname(__DIR__, 3) . '/themes/default/views/helpers.php';
+
+        // Load translations for the panel language so t() works in views.
+        $this->langService->boot($request);
+        $GLOBALS['langService'] = $this->langService;
 
         $viewFile = $this->viewsDir . '/' . $template . '.php';
         if (!is_file($viewFile)) return Response::error("View not found: {$template}", 500);
@@ -254,6 +300,13 @@ final class LanguageController
         // Active languages for panel switcher
         $panelLangs  = $this->langRepo->allActive();
         $currentLangCode = $this->langService->currentCode();
+
+        // One-shot flash message → SweetAlert2 toast in layout
+        $flashMsg  = $this->sessionMgr->getFlash('gc_msg');
+        $flashIcon = $this->sessionMgr->getFlash('gc_icon') ?? 'success';
+
+        // CSRF token — layout injects it into every POST form
+        $csrfToken = $this->sessionMgr->csrfToken();
 
         extract($data, EXTR_SKIP);
 

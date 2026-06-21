@@ -10,7 +10,7 @@ use GoniCore\Modules\Settings\SettingsService;
  * Sends HTML emails via PHP mail() or SMTP.
  *
  * Plugins and core code trigger notifications through the hook:
- *   $hooks->doAction('admin.notify', string $subject, string $htmlBody)
+ *   gc_emit('admin.notify', string $subject, string $htmlBody)
  *
  * Or call directly:
  *   $mailer->adminNotify($subject, $html)

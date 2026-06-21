@@ -1,8 +1,8 @@
 <?php
-$pageTitle = 'Pages';
+$pageTitle = t('pages.title');
 $activeNav = 'pages';
 ob_start(); ?>
-<a href="<?= e($base) ?>/manage/pages/new" class="topbar-btn">+ New Page</a>
+<a href="<?= e($base) ?>/manage/pages/new" class="topbar-btn">+ <?= e(t('pages.new')) ?></a>
 <?php $topbarActions = ob_get_clean(); ?>
 
 <div class="card">
@@ -11,11 +11,11 @@ ob_start(); ?>
         <table>
             <thead>
                 <tr>
-                    <th style="width:50%">Title</th>
-                    <th>Parent</th>
-                    <th>Status</th>
-                    <th>Updated</th>
-                    <th style="text-align:right">Actions</th>
+                    <th style="width:50%"><?= e(t('posts.post_title')) ?></th>
+                    <th><?= e(t('pages.parent')) ?></th>
+                    <th><?= e(t('admin.status')) ?></th>
+                    <th><?= e(t('posts.date')) ?></th>
+                    <th style="text-align:right"><?= e(t('admin.actions')) ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -34,7 +34,7 @@ ob_start(); ?>
                                  style="width:36px;height:36px;object-fit:cover;border-radius:5px;border:1px solid var(--border);flex-shrink:0"
                                  onerror="this.style.display='none'">
                             <?php else: ?>
-                            <div style="width:36px;height:36px;border-radius:5px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;color:var(--muted)">◫</div>
+                            <div style="width:36px;height:36px;border-radius:5px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)"><span class="material-symbols-outlined mi-sm">description</span></div>
                             <?php endif ?>
                             <div>
                                 <a href="<?= e($base) ?>/manage/pages/<?= (int)$pg['id'] ?>"
@@ -56,11 +56,11 @@ ob_start(); ?>
                         <a href="<?= e($base) ?>/page/<?= e($pg['slug']) ?>" target="_blank"
                            class="btn btn-ghost" style="padding:4px 8px;font-size:12px;margin-right:4px" title="View">↗</a>
                         <a href="<?= e($base) ?>/manage/pages/<?= (int)$pg['id'] ?>"
-                           class="btn btn-ghost" style="padding:4px 10px;font-size:12px;margin-right:4px">Edit</a>
+                           class="btn btn-ghost" style="padding:4px 10px;font-size:12px;margin-right:4px"><?= e(t('admin.edit')) ?></a>
                         <form method="POST" action="<?= e($base) ?>/manage/pages/<?= (int)$pg['id'] ?>/delete" style="display:inline">
                             <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:12px"
-                                onclick="gcConfirm(this,'Delete page?','&quot;<?= e(addslashes($pg['title'])) ?>&quot; will be permanently deleted.','Delete')">
-                                Delete
+                                onclick="gcConfirm(this, <?= e(json_encode(t('pages.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode('«' . $pg['title'] . '» — ' . t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)">
+                                <?= e(t('admin.delete')) ?>
                             </button>
                         </form>
                     </td>
@@ -71,10 +71,9 @@ ob_start(); ?>
     </div>
     <?php else: ?>
     <div class="empty">
-        <div class="empty-icon">◫</div>
-        <h3>No pages yet</h3>
-        <p style="margin-bottom:20px">Pages are static content — About, Contact, etc.</p>
-        <a href="<?= e($base) ?>/manage/pages/new" class="btn btn-primary">+ New Page</a>
+        <div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">description</span></div>
+        <h3><?= e(t('pages.no_pages')) ?></h3>
+        <a href="<?= e($base) ?>/manage/pages/new" class="btn btn-primary" style="margin-top:12px">+ <?= e(t('pages.new')) ?></a>
     </div>
     <?php endif ?>
 </div>

@@ -409,6 +409,7 @@ window.gcEd = {
     if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:#64748b">Uploading…</div>';
     var fd = new FormData();
     for (var i = 0; i < files.length; i++) fd.append('file', files[i]);
+    fd.append('_csrf', window.gcCsrf || '');
     fetch(base + '/manage/gallery/upload', { method: 'POST', body: fd })
       .then(function(){ gcEd._galLoad(base, window._gcGalEdId); })
       .catch(function(){ if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#ef4444;padding:24px">Upload failed.</div>'; });

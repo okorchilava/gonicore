@@ -43,18 +43,40 @@ final class LanguageService
     public function boot(Request $request): void
     {
         if (self::$booted) return;
-
         $cookieLang = $request->cookie(self::COOKIE_NAME);
-        $code = is_string($cookieLang) && $cookieLang !== '' ? $cookieLang : null;
+        $this->bootCode(is_string($cookieLang) && $cookieLang !== '' ? $cookieLang : null);
+    }
 
-        if ($code) {
-            $row = $this->repo->findByCode($code);
-            if (!$row || !$row['is_active']) $code = null;
-        }
+    /**
+     * Lazy boot used by t() when no controller called boot() explicitly
+     * (e.g. plugin-rendered admin pages). Reads the language cookie from
+     * $_COOKIE so the chosen language still applies — keeping the whole
+     * admin panel visually consistent.
+     */
+    private function ensureBooted(): void
+    {
+        if (self::$booted) return;
+        $cookie = $_COOKIE[self::COOKIE_NAME] ?? null;
+        $this->bootCode(is_string($cookie) && $cookie !== '' ? $cookie : null);
+    }
 
-        if (!$code) {
-            $default = $this->repo->defaultLanguage();
-            $code    = $default ? (string) $default['code'] : 'en';
+    /** Resolve the active language from a cookie value (or default) and load it. */
+    private function bootCode(?string $code): void
+    {
+        if (self::$booted) return;
+
+        try {
+            if ($code) {
+                $row = $this->repo->findByCode($code);
+                if (!$row || !$row['is_active']) $code = null;
+            }
+            if (!$code) {
+                $default = $this->repo->defaultLanguage();
+                $code    = $default ? (string) $default['code'] : 'en';
+            }
+        } catch (\Throwable) {
+            // DB unavailable / languages table missing — fall back gracefully.
+            $code = $code ?: 'en';
         }
 
         self::$currentCode = $code;
@@ -97,6 +119,12 @@ final class LanguageService
      */
     public function t(string $key, array $replace = []): string
     {
+        // Safety net: if no controller booted the language (some plugin pages),
+        // load it now from the cookie so t() never leaks raw keys into the UI.
+        if (!self::$booted) {
+            $this->ensureBooted();
+        }
+
         // Current language
         $value = self::$byCode[self::$currentCode][$key] ?? null;
 
@@ -119,7 +147,7 @@ final class LanguageService
 
     // ── Accessors ─────────────────────────────────────────────────────────────
 
-    public function currentCode(): string { return self::$currentCode; }
+    public function currentCode(): string { if (!self::$booted) $this->ensureBooted(); return self::$currentCode; }
 
     public function getRepo(): LanguageRepository { return $this->repo; }
 

@@ -1,0 +1,7 @@
+{
+    "name": "GoniAppointment",
+    "slug": "goni-appointment",
+    "version": "1.0.0",
+    "description": "Appointment booking system with services, staff and time slots for GoniCore.",
+    "author": "GoniCore"
+}

@@ -171,10 +171,10 @@ return new class {
             'shop_layout'       => 'grid',
             'allow_guest_checkout' => '1',
         ];
+        $pdo = $conn->pdo();
         foreach ($defaults as $k => $v) {
             $conn->execute(
-                "INSERT IGNORE INTO `gs_settings` (`key`, `value`) VALUES (?, ?)",
-                [$k, $v]
+                "INSERT IGNORE INTO `gs_settings` (`key`, `value`) VALUES (".$pdo->quote($k).",".$pdo->quote($v).")"
             );
         }
     }

@@ -94,6 +94,12 @@ final class Router
         $method = $request->method();
         $path   = $request->path();
 
+        // Normalize a trailing slash so "/manage/" matches the "/manage" route.
+        // The root "/" is left untouched.
+        if ($path !== '/' && str_ends_with($path, '/')) {
+            $path = rtrim($path, '/');
+        }
+
         $methodNotAllowed = false;
 
         foreach ($this->routes as $route) {

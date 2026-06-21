@@ -18,13 +18,9 @@
 
   <?php if ($hasWidgets): ?>
   <div class="gc-footer-content">
-    <div class="gc-footer-brand">
-      <?php if ($col1): ?><div class="widget-area"><?= $col1 ?></div><?php endif ?>
-    </div>
-    <div class="gc-footer-links">
-      <?php if ($col2): ?><div class="gc-footer-group"><?= $col2 ?></div><?php endif ?>
-      <?php if ($col3): ?><div class="gc-footer-group"><?= $col3 ?></div><?php endif ?>
-    </div>
+    <?php if ($col1): ?><div class="gc-footer-col"><?= $col1 ?></div><?php endif ?>
+    <?php if ($col2): ?><div class="gc-footer-col"><?= $col2 ?></div><?php endif ?>
+    <?php if ($col3): ?><div class="gc-footer-col"><?= $col3 ?></div><?php endif ?>
   </div>
   <?php endif ?>
 
@@ -49,6 +45,11 @@
 </footer>
 
 <script>
+/* GoniCore offline page — serve engine's own no-connection screen */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('<?= e($base ?? '') ?>/sw.js').catch(function(){});
+}
+
 document.addEventListener('click', function(e) {
   var btn  = document.getElementById('langBtn');
   var drop = document.getElementById('langDrop');
@@ -63,5 +64,6 @@ if (lb) lb.addEventListener('click', function(e) {
 });
 </script>
 
+<?php if (function_exists('gc_emit')) gc_emit('theme.footer'); ?>
 </body>
 </html>

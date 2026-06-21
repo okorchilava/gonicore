@@ -1,10 +1,10 @@
 <?php
 $isEdit    = !empty($post);
-$pageTitle = $isEdit ? 'Edit Post' : 'New Post';
+$pageTitle = $isEdit ? t('posts.edit') : t('posts.new');
 $activeNav = 'posts';
 $postType  = 'post';
 ob_start(); ?>
-<a href="<?= e($base) ?>/manage/posts" class="topbar-btn ghost">← Posts</a>
+<a href="<?= e($base) ?>/manage/posts" class="topbar-btn ghost">← <?= e(t('posts.title')) ?></a>
 <?php if ($isEdit): ?>
 <a href="<?= e($base) ?>/post/<?= e($post['slug'] ?? '') ?>" target="_blank" class="topbar-btn ghost" style="margin-left:4px">↗ View</a>
 <?php endif ?>
@@ -16,7 +16,7 @@ $formAction = $isEdit
 ?>
 
 <style>
-.post-editor-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; max-width: 1200px; }
+.post-editor-wrap { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
 .post-editor-main { min-width: 0; }
 .post-editor-side { display: flex; flex-direction: column; gap: 14px; }
 .slug-preview { font-size: 12px; color: var(--muted); margin-top: 5px; word-break: break-all; }
@@ -29,10 +29,6 @@ $formAction = $isEdit
 
 <form method="POST" action="<?= $formAction ?>" id="postForm">
 
-<?php if (!empty($error)): ?>
-<div id="gc-flash" data-msg="<?= e($error) ?>" data-icon="error" style="display:none"></div>
-<?php endif ?>
-
 <div class="post-editor-wrap">
 
     <!-- Main editor -->
@@ -42,7 +38,7 @@ $formAction = $isEdit
         <div style="margin-bottom:14px">
             <input type="text" name="title" id="postTitle" class="form-input"
                    value="<?= e((string)($post['title'] ?? '')) ?>"
-                   placeholder="Post title"
+                   placeholder="<?= e(t('posts.post_title')) ?>"
                    style="font-size:22px;font-weight:700;padding:14px 16px;border-radius:10px"
                    oninput="autoSlug(this.value)" required>
         </div>
@@ -59,8 +55,8 @@ $formAction = $isEdit
                 <?php if ($isEdit && !empty($post['slug'])): ?>
                 <button type="button" id="slugEditBtn" title="Edit slug"
                         onclick="enableSlugEdit()"
-                        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
-                    ✏️ Edit
+                        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:4px">
+                    <span class="material-symbols-outlined mi-sm">edit</span> <?= e(t('admin.edit')) ?>
                 </button>
                 <?php endif ?>
             </div>
@@ -80,7 +76,7 @@ $formAction = $isEdit
 
         <!-- Excerpt -->
         <div class="card" style="margin-top:14px">
-            <div class="card-header"><h3>Excerpt</h3></div>
+            <div class="card-header"><h3><?= e(t('posts.excerpt')) ?></h3></div>
             <div class="card-body">
                 <textarea name="excerpt" class="form-textarea" style="min-height:80px;resize:vertical"
                           placeholder="Brief summary shown in post listings. Leave empty to auto-generate."><?= e((string)($post['excerpt'] ?? '')) ?></textarea>
@@ -94,24 +90,24 @@ $formAction = $isEdit
 
         <!-- Publish -->
         <div class="card">
-            <div class="card-header"><h3>Publish</h3></div>
+            <div class="card-header"><h3><?= e(t('admin.status')) ?></h3></div>
             <div class="card-body" style="padding:16px">
                 <div style="margin-bottom:14px">
-                    <label class="form-label" style="margin-bottom:8px">Status</label>
-                    <?php foreach (['draft'=>['Draft','#f59e0b'],'published'=>['Published','#10b981'],'archived'=>['Archived','#94a3b8']] as $val => [$label, $color]): ?>
+                    <label class="form-label" style="margin-bottom:8px"><?= e(t('admin.status')) ?></label>
+                    <?php foreach (['draft'=>[t('posts.draft'),'#f59e0b'],'published'=>[t('posts.published'),'#10b981'],'archived'=>[t('posts.archived'),'#94a3b8']] as $val => [$label, $color]): ?>
                     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:13.5px">
                         <input type="radio" name="status" value="<?= $val ?>"
                                <?= (($post['status'] ?? 'draft') === $val) ? 'checked' : '' ?>
                                style="accent-color:<?= $color ?>">
                         <span style="display:flex;align-items:center;gap:5px">
                             <span style="width:8px;height:8px;border-radius:50%;background:<?= $color ?>;display:inline-block"></span>
-                            <?= $label ?>
+                            <?= e($label) ?>
                         </span>
                     </label>
                     <?php endforeach ?>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;padding:10px;font-size:14px;justify-content:center">
-                    <?= $isEdit ? 'Save Changes' : 'Publish Post' ?>
+                    <?= e(t('admin.save')) ?>
                 </button>
                 <?php if ($isEdit): ?>
                 <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted)">
@@ -123,10 +119,10 @@ $formAction = $isEdit
 
         <!-- Category (Select2) -->
         <div class="card">
-            <div class="card-header"><h3>Category</h3></div>
+            <div class="card-header"><h3><?= e(t('posts.category')) ?></h3></div>
             <div class="card-body" style="padding:16px">
                 <select name="category_id" id="catSelect" style="width:100%">
-                    <option value="">— None —</option>
+                    <option value=""><?= e(t('posts.select_category')) ?></option>
                     <?php foreach ($cats ?? [] as $c): ?>
                     <option value="<?= (int)$c['id'] ?>"
                         <?= ((int)($post['category_id'] ?? 0) === (int)$c['id']) ? 'selected' : '' ?>>
@@ -143,10 +139,10 @@ $formAction = $isEdit
         <!-- Featured Image -->
         <div class="card">
             <div class="card-header">
-                <h3>Featured Image</h3>
+                <h3><?= e(t('posts.featured_image')) ?></h3>
                 <?php if (!empty($post['featured_image'])): ?>
                 <button type="button" class="btn btn-ghost" style="font-size:11px;padding:2px 8px"
-                    onclick="removeFeatured()">Remove</button>
+                    onclick="removeFeatured()"><?= e(t('admin.delete')) ?></button>
                 <?php endif ?>
             </div>
             <div class="card-body" style="padding:12px">
@@ -159,7 +155,7 @@ $formAction = $isEdit
                 </div>
                 <button type="button" class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12.5px"
                     onclick="gcEd.openGallery('__featured__','<?= e($base) ?>')">
-                    🖼 <?= empty($post['featured_image']) ? 'Set Featured Image' : 'Change Image' ?>
+                    <span class="material-symbols-outlined mi-sm">image</span> <?= empty($post['featured_image']) ? e(t('posts.featured_image')) : 'Change Image' ?>
                 </button>
             </div>
         </div>
@@ -167,7 +163,7 @@ $formAction = $isEdit
         <?php if ($isEdit && !empty($languages ?? [])): ?>
         <!-- Translations -->
         <div class="card">
-            <div class="card-header"><h3>🌐 Translations</h3></div>
+            <div class="card-header"><h3><span class="material-symbols-outlined mi-sm">translate</span> Translations</h3></div>
             <div class="card-body" style="padding:12px;display:flex;flex-direction:column;gap:6px">
                 <?php foreach (($languages ?? []) as $lang):
                     if ($lang['is_default']) continue;
@@ -290,7 +286,7 @@ $(document).ready(function(){
                 '<input type="text" id="gc-gal-search" placeholder="Search files..." oninput="gcEd._galFilter()" ' +
                 'style="padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;width:220px;outline:none">' +
                 '<label style="cursor:pointer;background:#10B27C;color:#fff;padding:7px 14px;border-radius:7px;font-size:12.5px;font-weight:600">' +
-                '⬆ Upload<input type="file" id="gc-gal-upload" multiple accept="image/*" style="display:none" ' +
+                '<span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle">upload</span> Upload<input type="file" id="gc-gal-upload" multiple accept="image/*" style="display:none" ' +
                 'onchange="gcEd._galUpload(this,\'' + base + '\')"></label></div>' +
                 '<div id="gc-gal-grid" class="gc-gallery-grid"><div style="grid-column:1/-1;text-align:center;padding:40px;color:#64748b">Loading...</div></div>' +
                 '</div>',

@@ -17,20 +17,34 @@ declare(strict_types=1);
  *   try_files $uri $uri/ /index.php?$query_string;
  */
 
-// ── Installation gate ─────────────────────────────────────────
-// If the system has never been installed, redirect to the web
-// installer.  The installer creates .installed upon completion,
-// so this redirect fires exactly once.
-if (!is_file(dirname(__DIR__) . '/.installed')) {
-    $base = rtrim(dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+// ── Setup / installation gate ─────────────────────────────────
+// A site is considered "set up" only when BOTH exist:
+//   • composer.lock + vendor/  → dependencies installed
+//   • .env                     → application configured
+// If either is missing, send the visitor somewhere useful instead
+// of letting the app fatal with a blank/white screen.
+$root = dirname(__DIR__);
+$base = rtrim(dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+
+// 1) Dependencies not installed — the installer can't fix this
+//    (composer.lock is produced by Composer, not the wizard).
+if (!is_file($root . '/composer.lock') || !is_file($root . '/vendor/autoload.php')) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit("GoniCore is not ready: dependencies are missing.\nRun \"composer install\" in the project root, then reload.");
+}
+
+// 2) Not configured yet → run the self-contained web installer,
+//    which writes .env on completion.
+if (!is_file($root . '/.env')) {
     header('Location: ' . $base . '/install.php', true, 302);
     exit;
 }
 
 // ── Autoloader ────────────────────────────────────────────────
-require __DIR__ . '/../vendor/autoload.php';
+require $root . '/vendor/autoload.php';
 
 /** @var \GoniCore\Core\Application $app */
-$app = require __DIR__ . '/../bootstrap/app.php';
+$app = require $root . '/bootstrap/app.php';
 
 $app->run();

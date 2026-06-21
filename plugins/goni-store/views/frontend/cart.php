@@ -3,7 +3,14 @@
  * GoniStore — Cart page
  * Variables: $cart, $totals, $couponMsg, $settings, $base
  */
-$symbol = $settings['currency_symbol'] ?? '$';
+$symbol   = $settings['currency_symbol'] ?? '$';
+// Calculate total discount from original prices vs effective prices
+$totalSaved = 0;
+foreach ($cart ?? [] as $item) {
+    if (!empty($item['original_price'])) {
+        $totalSaved += ((float)$item['original_price'] - (float)$item['price']) * (int)$item['qty'];
+    }
+}
 ?>
 <style>
 .gs-cart{max-width:1100px;margin:0 auto;padding:40px 24px}
@@ -138,6 +145,12 @@ $symbol = $settings['currency_symbol'] ?? '$';
             <div class="gs-summary-row">
                 <span>Shipping</span>
                 <span><?= (float)$totals['shipping']>0 ? $symbol.number_format((float)$totals['shipping'],2) : '<span class="green">Free</span>' ?></span>
+            </div>
+            <?php endif ?>
+            <?php if ($totalSaved > 0): ?>
+            <div class="gs-summary-row" style="color:#16a34a;font-weight:600">
+                <span>🏷 You save</span>
+                <span>-<?= $symbol ?><?= number_format($totalSaved, 2) ?></span>
             </div>
             <?php endif ?>
             <div class="gs-summary-row bold">

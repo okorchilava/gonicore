@@ -4,8 +4,8 @@
  * Variables: $order, $settings, $base
  */
 $symbol  = $settings['currency_symbol'] ?? '$';
-$billing = json_decode((string)($order['billing'] ?? ''), true) ?: [];
-$items   = json_decode((string)($order['items'] ?? ''), true) ?: [];
+$billing = is_array($order['billing'] ?? null) ? $order['billing'] : (json_decode((string)($order['billing'] ?? ''), true) ?: []);
+$items   = is_array($order['items']   ?? null) ? $order['items']   : (json_decode((string)($order['items']   ?? ''), true) ?: []);
 
 // items may be stored as a joined query result instead
 if (empty($items) && isset($order['order_items'])) {
@@ -122,9 +122,9 @@ $sc = $statusColors[$order['status']] ?? $statusColors['pending'];
                 <td>
                     <div class="gs-item-n"><?= e($item['name'] ?? '') ?></div>
                     <?php
-                        $iatts = is_array($item['attributes']??null)
+                        $iatts = is_array($item['attributes'] ?? null)
                             ? $item['attributes']
-                            : json_decode((string)($item['attributes']??''),true) ?: [];
+                            : (json_decode((string)($item['attributes'] ?? ''), true) ?: []);
                         if (!empty($iatts)):
                             $attrStr = implode(', ', array_map(fn($k,$v)=>$k.': '.$v, array_keys($iatts), $iatts));
                     ?>

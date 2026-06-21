@@ -1,8 +1,8 @@
 <?php
-$pageTitle = 'Plugins';
+$pageTitle = t('plugins.title');
 $activeNav = 'plugins';
 ob_start(); ?>
-<label for="pluginUpload" class="topbar-btn" style="cursor:pointer">⬆ Upload Plugin</label>
+<label for="pluginUpload" class="topbar-btn" style="cursor:pointer"><?= e(t('plugins.upload')) ?></label>
 <?php $topbarActions = ob_get_clean(); ?>
 
 <!-- Upload form (hidden, triggered by label) -->
@@ -12,24 +12,17 @@ ob_start(); ?>
            onchange="document.getElementById('uploadForm').submit()">
 </form>
 
-<?php if (!empty($uploadError ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($uploadError) ?>" data-icon="error" style="display:none"></div>
-<?php endif ?>
-<?php if (!empty($uploadSuccess ?? null)): ?>
-<div id="gc-flash" data-msg="Plugin uploaded successfully." data-icon="success" style="display:none"></div>
-<?php endif ?>
-
 <div class="card">
     <?php if (!empty($plugins)): ?>
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th style="width:35%">Plugin</th>
-                    <th>Version</th>
-                    <th>Author</th>
-                    <th>Status</th>
-                    <th style="text-align:right">Actions</th>
+                    <th style="width:35%"><?= e(t('plugins.plugin_col')) ?></th>
+                    <th><?= e(t('plugins.version')) ?></th>
+                    <th><?= e(t('plugins.author')) ?></th>
+                    <th><?= e(t('plugins.status')) ?></th>
+                    <th style="text-align:right"><?= e(t('plugins.actions')) ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -46,25 +39,25 @@ ob_start(); ?>
                     <td style="font-size:13px;color:var(--muted)"><?= e($pl['author']) ?></td>
                     <td>
                         <?php if (!$pl['has_bootstrap']): ?>
-                        <span class="badge archived">No bootstrap</span>
+                        <span class="badge archived"><?= e(t('plugins.no_bootstrap')) ?></span>
                         <?php elseif ($pl['active']): ?>
-                        <span class="badge published">Active</span>
+                        <span class="badge published"><?= e(t('plugins.active')) ?></span>
                         <?php else: ?>
-                        <span class="badge draft">Inactive</span>
+                        <span class="badge draft"><?= e(t('plugins.inactive')) ?></span>
                         <?php endif ?>
                     </td>
                     <td style="text-align:right;white-space:nowrap">
                         <?php if ($pl['has_bootstrap']): ?>
                         <form method="POST" action="<?= e($base) ?>/manage/plugins/<?= e($pl['slug']) ?>/<?= $pl['active'] ? 'deactivate' : 'activate' ?>" style="display:inline">
                             <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">
-                                <?= $pl['active'] ? 'Deactivate' : 'Activate' ?>
+                                <?= $pl['active'] ? e(t('plugins.deactivate')) : e(t('plugins.activate')) ?>
                             </button>
                         </form>
                         <?php endif ?>
                         <form method="POST" action="<?= e($base) ?>/manage/plugins/<?= e($pl['slug']) ?>/delete" style="display:inline">
                             <button type="button" class="btn btn-danger" style="font-size:11px;padding:4px 10px"
-                                onclick="gcConfirm(this,'Delete plugin?','Plugin &quot;<?= e(addslashes($pl['name'])) ?>&quot; and all its files will be permanently removed.','Delete')">
-                                Delete
+                                onclick="gcConfirm(this, <?= e(json_encode(t('plugins.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode('«' . $pl['name'] . '» — ' . t('plugins.confirm_delete_msg') . ' ' . t('plugins.confirm_delete_data'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)">
+                                <?= e(t('plugins.delete')) ?>
                             </button>
                         </form>
                     </td>
@@ -75,16 +68,16 @@ ob_start(); ?>
     </div>
     <?php else: ?>
     <div class="empty">
-        <div class="empty-icon">🧩</div>
-        <h3>No plugins installed</h3>
-        <p style="margin-bottom:20px">Upload a plugin ZIP to extend GoniCore.</p>
-        <label for="pluginUpload" class="btn btn-primary" style="cursor:pointer">⬆ Upload Plugin</label>
+        <div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">extension</span></div>
+        <h3><?= e(t('plugins.no_plugins')) ?></h3>
+        <p style="margin-bottom:20px"><?= e(t('plugins.no_plugins_sub')) ?></p>
+        <label for="pluginUpload" class="btn btn-primary" style="cursor:pointer"><?= e(t('plugins.upload')) ?></label>
     </div>
     <?php endif ?>
 </div>
 
 <div class="card" style="margin-top:16px">
-    <div class="card-header"><h3>📦 Plugin Structure</h3></div>
+    <div class="card-header"><h3><span class="material-symbols-outlined mi-sm">inventory_2</span> <?= e(t('plugins.structure')) ?></h3></div>
     <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Each plugin is a ZIP containing a folder with the following structure:</p>
         <pre style="background:var(--bg);border-radius:8px;padding:14px 16px;font-size:13px;color:var(--text);overflow-x:auto">my-plugin/

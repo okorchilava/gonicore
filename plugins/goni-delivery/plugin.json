@@ -1,0 +1,7 @@
+{
+    "name": "GoniDelivery",
+    "slug": "goni-delivery",
+    "version": "1.0.0",
+    "description": "Courier and food delivery management for GoniCore.",
+    "author": "GoniCore"
+}

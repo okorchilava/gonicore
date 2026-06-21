@@ -19,22 +19,55 @@ final class FrontendController
     {
         $file = $this->viewsDir.'/'.$tpl.'.php';
         if (!is_file($file)) return Response::error("Store view not found: $tpl", 500);
-        require_once dirname(__DIR__,3).'/themes/default/views/helpers.php';
+
+        $themeViews = dirname(__DIR__, 3) . '/themes/default/views';
+        require_once $themeViews . '/helpers.php';
+
         $base     = $r->basePath();
         $settings = $this->store->settings();
         $cats     = $this->store->allCategories();
+        $store    = $this->store;
+
+        // ── Pull theme services so header/footer render correctly ─────────────
+        try {
+            $c             = gc_container();
+            $siteName      = $c->get(\GoniCore\Modules\Settings\SettingsService::class)->siteName() ?: 'GoniCore';
+            $langService   = $c->get(\GoniCore\Modules\Language\LanguageService::class);
+            $langService->boot($r);
+            $menuService   = $c->get(\GoniCore\Modules\Menu\MenuService::class);
+            $widgetService = $c->get(\GoniCore\Modules\Widget\WidgetService::class);
+            $categories    = $c->get(\GoniCore\Modules\Category\CategoryRepository::class)->findAll();
+            $hooks         = $c->get(\GoniCore\Core\Hooks\HookManager::class);
+        } catch (\Throwable) {
+            $siteName      = 'GoniCore';
+            $langService   = null;
+            $menuService   = null;
+            $widgetService = null;
+            $categories    = [];
+            $hooks         = null;
+        }
+
         extract($data, EXTR_SKIP);
-        ob_start();
-        try { include $file; $content = (string)ob_get_clean(); }
-        catch (\Throwable $e) { ob_end_clean(); throw $e; }
-        // Wrap in theme layout
-        $themeViews = dirname(__DIR__,3).'/themes/default/views';
-        require_once $themeViews.'/helpers.php';
+
+        // ── Render inner view → $content ──────────────────────────────────────
         ob_start();
         try {
-            include $themeViews.'/layout.php';
-            return Response::html((string)ob_get_clean());
-        } catch (\Throwable $e) { ob_end_clean(); throw $e; }
+            include $file;
+            $content = (string) ob_get_clean();
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            throw $e;
+        }
+
+        // ── Wrap in theme layout (header + content + footer) ──────────────────
+        ob_start();
+        try {
+            include $themeViews . '/layout.php';
+            return Response::html((string) ob_get_clean());
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            throw $e;
+        }
     }
 
     // GET /shop
@@ -132,7 +165,22 @@ final class FrontendController
         if ($coupon) $totals['total'] -= $coupon['discount'];
         $error  = $r->query('error','');
         $pageTitle = 'Checkout';
-        return $this->view($r, 'checkout', compact('cart','totals','coupon','error','pageTitle'));
+
+        // Payment plugins register their methods via this filter
+        $paymentMethods = gc_apply('store.payment.methods', [
+            'cod' => [
+                'icon'  => '💵',
+                'label' => 'Cash on Delivery',
+                'desc'  => 'Pay when you receive your order.',
+            ],
+            'bank_transfer' => [
+                'icon'  => '🏦',
+                'label' => 'Bank Transfer',
+                'desc'  => 'Make a direct bank transfer. Details will follow.',
+            ],
+        ]);
+
+        return $this->view($r, 'checkout', compact('cart','totals','coupon','error','pageTitle','paymentMethods'));
     }
 
     // POST /checkout/place
@@ -178,6 +226,8 @@ final class FrontendController
             ];
         }
 
+        $paymentMethod = (string) $r->post('payment_method', 'cod');
+
         $orderId = $this->store->createOrder([
             'status'         => 'pending',
             'subtotal'       => $totals['subtotal'],
@@ -185,19 +235,32 @@ final class FrontendController
             'shipping_cost'  => $totals['shipping'],
             'discount'       => $discount,
             'total'          => max(0.0, $total),
-            'currency'       => $this->store->setting('currency','USD'),
+            'currency'       => $this->store->setting('currency', 'GEL'),
             'billing'        => json_encode($billing),
             'shipping'       => json_encode($billing),
-            'payment_method' => $r->post('payment_method','cod'),
-            'customer_note'  => $r->post('customer_note',''),
+            'payment_method' => $paymentMethod,
+            'customer_note'  => $r->post('customer_note', ''),
             'coupon_code'    => $coupon['code'] ?? '',
             'ip_address'     => $_SERVER['REMOTE_ADDR'] ?? '',
         ], $items);
 
+        // Allow payment plugins to take over (e.g. redirect to payment gateway)
+        // Filter receives: (null, paymentMethod, orderId, total, billing, request)
+        // Return a Response to redirect; return null to use default flow.
+        $paymentRedirect = gc_apply('store.payment.process', null,
+            $paymentMethod, $orderId, max(0.0, $total), $billing, $items, $r
+        );
+
+        if ($paymentRedirect instanceof Response) {
+            // Gateway redirect: cart cleared only after confirmed payment (see success handler)
+            return $paymentRedirect;
+        }
+
+        // Non-gateway payment (COD, bank transfer): clear cart immediately
         $this->store->clearCart();
         unset($_SESSION['gs_coupon']);
 
-        return Response::redirect($r->basePath().'/shop/order-received/'.$orderId);
+        return Response::redirect($r->basePath() . '/shop/order-received/' . $orderId);
     }
 
     // GET /shop/order-received/{id}

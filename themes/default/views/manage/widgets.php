@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Widgets';
+$pageTitle = t('widgets.title');
 $activeNav = 'widgets';
 $topbarActions = '';
 
@@ -15,7 +15,7 @@ foreach ($allWidgets as $w) {
     $byArea[$slug][] = $w;
 }
 
-$typeIcons = ['html' => '</>', 'text' => 'T', 'recent-posts' => '✦'];
+$typeIcons = ['html' => 'code', 'text' => 'notes', 'recent-posts' => 'article'];
 ?>
 <style>
 .wp-wrap{display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start}
@@ -94,7 +94,7 @@ $typeIcons = ['html' => '</>', 'text' => 'T', 'recent-posts' => '✦'];
       <div class="card-body" style="padding:12px">
         <?php foreach ($types as $t): ?>
         <div class="wp-type-item" onclick="openModal('<?= e($t['slug']) ?>','<?= e(addslashes($t['name'])) ?>')">
-          <div class="wp-type-icon"><?= htmlspecialchars($typeIcons[$t['slug']] ?? '⬡', ENT_QUOTES, 'UTF-8') ?></div>
+          <div class="wp-type-icon"><span class="material-symbols-outlined"><?= htmlspecialchars($typeIcons[$t['slug']] ?? 'widgets', ENT_QUOTES, 'UTF-8') ?></span></div>
           <div style="flex:1;min-width:0">
             <div class="wp-type-name"><?= e($t['name']) ?></div>
             <?php if (!empty($t['fields'])): ?>
@@ -150,7 +150,7 @@ $typeIcons = ['html' => '</>', 'text' => 'T', 'recent-posts' => '✦'];
           $typeKey  = array_search($w['type'], array_column($types, 'slug'));
           $wType    = $typeKey !== false ? $types[$typeKey] : null;
           $wFields  = $wType['fields'] ?? [];
-          $icon     = $typeIcons[$w['type']] ?? '⬡';
+          $icon     = $typeIcons[$w['type']] ?? 'widgets';
           $active   = (bool)$w['is_active'];
         ?>
         <li class="wp-row <?= $active ? '' : 'wp-inactive' ?>"
@@ -159,7 +159,7 @@ $typeIcons = ['html' => '</>', 'text' => 'T', 'recent-posts' => '✦'];
             data-id="<?= (int)$w['id'] ?>"
             data-area="<?= e($area['slug']) ?>">
           <span class="wp-handle" title="Drag to reorder">⣿</span>
-          <span class="wp-wicon"><?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?></span>
+          <span class="wp-wicon"><span class="material-symbols-outlined mi-sm"><?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?></span></span>
           <div class="wp-winfo">
             <div class="wp-wtitle"><?= e((string)($w['title'] ?: 'Untitled')) ?></div>
             <div class="wp-wtype"><?= e((string)$w['type']) ?></div>
@@ -173,7 +173,7 @@ $typeIcons = ['html' => '</>', 'text' => 'T', 'recent-posts' => '✦'];
             </form>
             <form method="POST" action="<?= e($base) ?>/manage/widgets/<?= (int)$w['id'] ?>/delete" style="display:inline">
               <button type="button" class="btn btn-danger" style="font-size:11px;padding:3px 8px"
-                onclick="gcConfirm(this,'Remove widget?','','Remove','#ef4444')">✕</button>
+                onclick="gcConfirm(this, <?= e(json_encode(t('widgets.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, '', gcI18n.yesDelete, '#ef4444')">✕</button>
             </form>
           </div>
         </li>

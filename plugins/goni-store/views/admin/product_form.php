@@ -58,10 +58,36 @@ ob_start(); ?>
                     <input type="text" name="price" class="form-input" value="<?= e($product['price'] ?? '0') ?>" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Sale Price</label>
-                    <input type="text" name="sale_price" class="form-input" value="<?= e($product['sale_price'] ?? '') ?>" placeholder="Leave empty = no sale">
+                    <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
+                        Sale Price
+                        <span style="font-size:11px;color:var(--muted);font-weight:400">
+                            Discount:
+                            <input type="number" id="discountPct" min="0" max="100" step="1"
+                                   style="width:52px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;text-align:right"
+                                   placeholder="%" oninput="applyPct(this.value)">%
+                        </span>
+                    </label>
+                    <input type="text" name="sale_price" id="salePriceInput" class="form-input"
+                           value="<?= e($product['sale_price'] ?? '') ?>"
+                           placeholder="Leave empty = no sale"
+                           oninput="updatePct()">
                 </div>
             </div>
+
+            <!-- Sale date range -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label">Sale From <span style="font-size:11px;color:var(--muted);font-weight:400">(optional)</span></label>
+                    <input type="datetime-local" name="sale_from" class="form-input"
+                           value="<?= e($product['sale_from'] ? date('Y-m-d\TH:i', strtotime((string)$product['sale_from'])) : '') ?>">
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label">Sale Until <span style="font-size:11px;color:var(--muted);font-weight:400">(optional)</span></label>
+                    <input type="datetime-local" name="sale_to" class="form-input"
+                           value="<?= e($product['sale_to'] ? date('Y-m-d\TH:i', strtotime((string)$product['sale_to'])) : '') ?>">
+                </div>
+            </div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
                 <div class="form-group">
                     <label class="form-label">SKU</label>
@@ -112,13 +138,12 @@ ob_start(); ?>
             <div class="form-group">
                 <label class="form-label">Full Description</label>
                 <?php
-                $editorName  = 'description';
-                $editorId    = 'gsProductDesc';
-                $editorValue = $product['description'] ?? '';
+                $editorName   = 'description';
+                $editorId     = 'gsProductDesc';
+                $editorValue  = $product['description'] ?? '';
                 $editorHeight = '380px';
-                $editorPath = dirname(__DIR__,3).'/themes/default/views/manage/_editor.php';
-                if (is_file($editorPath)) include $editorPath;
-                else: ?>
+                $editorPath   = dirname(__DIR__, 3) . '/themes/default/views/manage/_editor.php';
+                if (is_file($editorPath)): include $editorPath; else: ?>
                 <textarea name="description" class="form-textarea" style="min-height:200px"><?= e($editorValue) ?></textarea>
                 <?php endif ?>
             </div>
@@ -237,6 +262,21 @@ ob_start(); ?>
 var gsSlugEdited = <?= ($isEdit && !empty($product['slug'])) ? 'true' : 'false' ?>;
 function slugify(s){return s.toLowerCase().replace(/[^\w\s-]/g,'').replace(/[\s_-]+/g,'-').replace(/^-+|-+$/g,'');}
 function autoSlug(t){if(gsSlugEdited)return; document.getElementById('gsSlug').value=slugify(t);}
+
+// ── Discount % calculator ──────────────────────────────────────
+function regularPrice(){return parseFloat(document.querySelector('[name="price"]').value.replace(',','.')) || 0;}
+function applyPct(pct){
+    var p = regularPrice(); if(!p || pct === '') return;
+    var sale = p - (p * parseFloat(pct) / 100);
+    document.getElementById('salePriceInput').value = sale > 0 ? sale.toFixed(2) : '';
+}
+function updatePct(){
+    var p = regularPrice();
+    var s = parseFloat(document.getElementById('salePriceInput').value.replace(',','.'));
+    var el = document.getElementById('discountPct');
+    if(p > 0 && s > 0 && s < p) { el.value = Math.round((1 - s/p)*100); }
+    else { el.value = ''; }
+}
 document.getElementById('gsSlug').addEventListener('input',function(){gsSlugEdited=true;});
 
 function showTab(name,el){

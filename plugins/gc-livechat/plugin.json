@@ -1,0 +1,7 @@
+{
+    "name":        "GC Live Chat",
+    "description": "Professional live chat with an AI agent that answers visitors and triages their request using your site content, then hands off to a human operator. Multi-provider AI (Claude, Gemini, ChatGPT), floating widget, and an operator inbox. Real-time via AJAX polling — no extra server needed.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

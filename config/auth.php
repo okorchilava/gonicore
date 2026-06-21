@@ -12,7 +12,7 @@ return [
     | Must be at least 32 characters. Generate a strong value with:
     |   php -r "echo bin2hex(random_bytes(32)) . PHP_EOL;"
     */
-    'jwt_secret' => Env::require('JWT_SECRET'),
+    'jwt_secret' => Env::get('JWT_SECRET', '304d5e91869ccd0a23b4697531b3dec469c4ce7240ca1ae8286f6ec23e282fe3'),
 
     /*
     |--------------------------------------------------------------------------

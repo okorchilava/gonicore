@@ -61,30 +61,8 @@ final class ThemeController
                         return $this->view($request, 'page_landing', compact('post', 'template'));
                     }
 
-                    if ($template === 'builder' && !empty($post['builder_data'])) {
-                        require_once $this->viewsDir . '/helpers.php';
-                        $base        = $request->basePath();
-                        $siteName    = (string) ($this->settings->siteName() ?: $this->siteName);
-                        $siteTagline = $this->settings->siteTagline();
-                        $categories  = $this->categories->findAll();
-                        $lang        = $this->langService->currentCode();
-                        $languages   = $this->langService->activeLanguages();
-                        $langService = $this->langService;
-                        global $widgetServiceInstance, $menuServiceInstance, $shortcodeManagerInstance, $goni_builder_service;
-                        $widgetServiceInstance    = $this->widgetService;
-                        $menuServiceInstance      = $this->menuService;
-                        $shortcodeManagerInstance = $this->shortcodes;
-                        $builderHtml = $goni_builder_service
-                            ? $goni_builder_service->render((string) $post['builder_data'], $base)
-                            : '<div style="padding:40px;text-align:center;color:#ef4444">Goni Builder plugin is not active.</div>';
-                        $builderView = dirname(__DIR__, 3) . '/plugins/goni-builder/views/page_builder.php';
-                        if (!is_file($builderView)) {
-                            $builderView = $this->viewsDir . '/page_builder.php';
-                        }
-                        ob_start();
-                        include $builderView;
-                        return Response::html((string) ob_get_clean());
-                    }
+                    // Let an active plugin take over rendering (e.g. page builder).
+                    if ($resp = $this->pluginRender($request, $post)) return $resp;
 
                     $isPage          = true;
                     $category        = null;
@@ -131,29 +109,13 @@ final class ThemeController
             return Response::html($this->processShortcodes((string) $post['content']));
         }
 
-        if ($template === 'builder' && !empty($post['builder_data'])) {
-            require_once $this->viewsDir . '/helpers.php';
-            $base        = $request->basePath();
-            $siteName    = (string) ($this->settings->siteName() ?: $this->siteName);
-            $siteTagline = $this->settings->siteTagline();
-            $categories  = $this->categories->findAll();
-            $lang        = $this->langService->currentCode();
-            $languages   = $this->langService->activeLanguages();
-            $langService = $this->langService;
-            global $widgetServiceInstance, $menuServiceInstance, $shortcodeManagerInstance, $goni_builder_service;
-            $widgetServiceInstance    = $this->widgetService;
-            $menuServiceInstance      = $this->menuService;
-            $shortcodeManagerInstance = $this->shortcodes;
-            $builderHtml = $goni_builder_service
-                ? $goni_builder_service->render((string) $post['builder_data'], $base)
-                : '<div style="padding:40px;text-align:center;color:#ef4444">Goni Builder plugin is not active.</div>';
-            $builderView = dirname(__DIR__, 3) . '/plugins/goni-builder/views/page_builder.php';
-            if (!is_file($builderView)) {
-                $builderView = $this->viewsDir . '/page_builder.php';
-            }
-            ob_start();
-            include $builderView;
-            return Response::html((string) ob_get_clean());
+        // Let an active plugin take over rendering (e.g. page builder).
+        if ($resp = $this->pluginRender($request, $post)) return $resp;
+
+        // Allow plugins to intercept page rendering (e.g. store redirects /page/shop → /shop)
+        if (function_exists('gc_apply')) {
+            $intercept = gc_apply('page.intercept', null, $post, $request);
+            if ($intercept instanceof Response) return $intercept;
         }
 
         $isPage              = true;
@@ -287,6 +249,28 @@ final class ThemeController
 
     private function processShortcodes(string $content): string
     {
-        return $this->shortcodes->process($content);
+        $content = $this->shortcodes->process($content);
+
+        // Let plugins filter the final content (e.g. lazy-load images).
+        if (function_exists('gc_apply')) {
+            $content = (string) gc_apply('the_content', $content);
+        }
+
+        return $content;
+    }
+
+    /**
+     * Give plugins a chance to fully render a page based on its template
+     * (e.g. a page builder). The core knows nothing about specific plugins:
+     * a plugin registers `page.render` and returns a Response to take over,
+     * or returns null to let the default theme rendering proceed.
+     */
+    private function pluginRender(Request $request, array $post): ?Response
+    {
+        if (!function_exists('gc_apply')) {
+            return null;
+        }
+        $resp = gc_apply('page.render', null, $post, $request);
+        return $resp instanceof Response ? $resp : null;
     }
 }

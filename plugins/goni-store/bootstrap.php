@@ -20,9 +20,60 @@ spl_autoload_register(function (string $class) use ($pluginDir): void {
 // ── Migration ─────────────────────────────────────────────────────────────────
 try {
     $conn = $container->get(Connection::class);
-    if (empty($conn->query("SHOW TABLES LIKE 'gs_products'"))) {
+    $rows = $conn->query(
+        "SELECT COUNT(*) AS cnt FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gs_products'"
+    );
+    if ((int)($rows[0]['cnt'] ?? 0) === 0) {
         $migration = require $pluginDir.'/database/migration.php';
         $migration->up($conn);
+    }
+    // v2: sale date columns
+    $colRows = $conn->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gs_products' AND COLUMN_NAME = 'sale_from'");
+    if ((int)($colRows[0]['cnt'] ?? 0) === 0) {
+        $conn->execute("ALTER TABLE `gs_products`
+            ADD COLUMN `sale_from` DATETIME NULL DEFAULT NULL AFTER `sale_price`,
+            ADD COLUMN `sale_to`   DATETIME NULL DEFAULT NULL AFTER `sale_from`");
+    }
+    // v3: payment transaction id on orders
+    $colRows2 = $conn->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gs_orders' AND COLUMN_NAME = 'transaction_id'");
+    if ((int)($colRows2[0]['cnt'] ?? 0) === 0) {
+        $conn->execute("ALTER TABLE `gs_orders`
+            ADD COLUMN `transaction_id` VARCHAR(255) NULL DEFAULT NULL AFTER `payment_method`");
+    }
+
+} catch (\Throwable) {}
+
+// ── Auto-create store pages (once; flag stored in gs_settings) ───────────────
+try {
+    $qb = $container->get(QueryBuilder::class);
+
+    $flag = $qb->table('gs_settings')->where('key', '=', 'store_pages_created')->first();
+    if (!$flag || $flag['value'] !== '1') {
+        $user     = $qb->table('users')->orderBy('id', 'ASC')->first();
+        $authorId = $user ? (int) $user['id'] : 1;
+
+        foreach ([
+            ['shop',     'Shop'],
+            ['cart',     'Cart'],
+            ['checkout', 'Checkout'],
+        ] as [$slug, $title]) {
+            if (!$qb->table('posts')->where('slug', '=', $slug)->first()) {
+                $qb->table('posts')->insert([
+                    'type'      => 'page',
+                    'title'     => $title,
+                    'slug'      => $slug,
+                    'content'   => '',
+                    'status'    => 'published',
+                    'author_id' => $authorId,
+                ]);
+            }
+        }
+
+        if ($flag) {
+            $qb->table('gs_settings')->where('key', '=', 'store_pages_created')->update(['value' => '1']);
+        } else {
+            $qb->table('gs_settings')->insert(['key' => 'store_pages_created', 'value' => '1']);
+        }
     }
 } catch (\Throwable) {}
 
@@ -97,8 +148,42 @@ $router->get('/shop/order-received/{id}',        [FrontendController::class, 'or
 
 unset($_shopSlug, $_cartSlug, $_chkSlug);
 
+// ── Redirect /page/{store-slug} → /{store-slug} ──────────────────────────────
+gc_filter('page.intercept', static function (mixed $existing, array $post, \GoniCore\Core\Http\Request $request) use ($container): mixed {
+    try {
+        $store = $container->get(StoreService::class);
+        $storeSlugs = [
+            $store->setting('shop_page_slug', 'shop'),
+            $store->setting('cart_page_slug', 'cart'),
+            $store->setting('checkout_page_slug', 'checkout'),
+        ];
+        if (in_array($post['slug'], $storeSlugs, true)) {
+            return \GoniCore\Core\Http\Response::redirect($request->basePath() . '/' . $post['slug']);
+        }
+    } catch (\Throwable) {}
+    return $existing;
+});
+
+// ── Cart badge in site header ─────────────────────────────────────────────────
+gc_on('theme.nav.extra', static function (string $base) use ($container): void {
+    try {
+        $cartSlug = $container->get(StoreService::class)->setting('cart_page_slug', 'cart');
+    } catch (\Throwable) {
+        $cartSlug = 'cart';
+    }
+    if (session_status() === PHP_SESSION_NONE) @session_start();
+    $count = (int) array_sum(array_column($_SESSION['gs_cart'] ?? [], 'qty'));
+    $url   = htmlspecialchars(rtrim($base, '/') . '/' . $cartSlug, ENT_QUOTES);
+    echo '<a href="' . $url . '" aria-label="Cart" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;color:var(--muted);text-decoration:none;transition:background .15s" onmouseover="this.style.background=\'var(--surface)\'" onmouseout="this.style.background=\'transparent\'">';
+    echo '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>';
+    if ($count > 0) {
+        echo '<span style="position:absolute;top:1px;right:1px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;border-radius:50%;min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0 2px">' . $count . '</span>';
+    }
+    echo '</a>';
+}, 20);
+
 // ── Sidebar nav hook ──────────────────────────────────────────────────────────
-$hooks->addAction('manage.sidebar.nav', static function (string $base, string $activeNav): void {
+gc_on('manage.sidebar.nav', static function (string $base, string $activeNav): void {
     $active = str_starts_with($activeNav, 'store') ? 'active' : '';
     echo '<li><a href="'.htmlspecialchars($base.'/manage/store', ENT_QUOTES).'" class="'.$active.'">'
         .'<span class="nav-icon">🛒</span> GoniStore'

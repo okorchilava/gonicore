@@ -57,6 +57,8 @@ final class BuilderService
             // Dynamic
             ['type' => 'posts_grid','label' => 'Posts Grid', 'icon' => '⊟',  'category' => 'Dynamic'],
             ['type' => 'slider',    'label' => 'Slider',     'icon' => '🎞',  'category' => 'Dynamic'],
+            ['type' => 'ad_zone',   'label' => 'Ad Zone',    'icon' => '📢',  'category' => 'Dynamic'],
+            ['type' => 'gccounter', 'label' => 'GC Counter', 'icon' => '🔢',  'category' => 'Dynamic'],
         ];
     }
 
@@ -174,10 +176,32 @@ final class BuilderService
                 ['name' => 'slider_id', 'label' => 'Slider ID',  'type' => 'text', 'default' => ''],
                 ['name' => 'caption',   'label' => 'Caption (optional)', 'type' => 'text', 'default' => ''],
             ]],
+            'ad_zone' => ['label' => 'Ad Zone (GsAds)', 'fields' => [
+                ['name' => 'slug',  'label' => 'Ad Zone', 'type' => 'select', 'default' => '',
+                 'options' => $this->adZoneOptions()],
+                ['name' => 'limit', 'label' => 'Max Ads (0 = all)', 'type' => 'text', 'default' => '1'],
+            ]],
+            'gccounter' => ['label' => 'GC Counter', 'fields' => [
+                ['name' => 'group_id', 'label' => 'Counter Group', 'type' => 'select', 'default' => '',
+                 'options' => $this->counterGroupOptions()],
+            ]],
         ];
     }
 
     // ── Frontend rendering ────────────────────────────────────────────────────
+
+    /** Escape a value interpolated into a style="" attribute. */
+    private function cssVal(mixed $v): string
+    {
+        return htmlspecialchars(trim((string) $v), ENT_QUOTES);
+    }
+
+    /** Whitelist text-align values — anything else falls back to $default. */
+    private function alignVal(mixed $v, string $default = 'left'): string
+    {
+        $v = (string) $v;
+        return in_array($v, ['left', 'center', 'right', 'justify'], true) ? $v : $default;
+    }
 
     public function render(string $json, string $basePath = ''): string
     {
@@ -205,7 +229,14 @@ final class BuilderService
         }
 
         // Skip sections whose columns rendered no visible content
-        if (trim(strip_tags($inner)) === '' && !str_contains($inner, '<img') && !str_contains($inner, 'gb-spacer') && !str_contains($inner, 'gb-slider') && empty($st['bg_image'])) {
+        if (trim(strip_tags($inner)) === ''
+            && !str_contains($inner, '<img')
+            && !str_contains($inner, 'gb-spacer')
+            && !str_contains($inner, 'gb-slider')
+            && !str_contains($inner, 'gsads-zone')
+            && !str_contains($inner, 'gb-ad-zone')
+            && empty($st['bg_image'])
+        ) {
             return '';
         }
 
@@ -222,10 +253,10 @@ final class BuilderService
 
     private function renderColumn(array $col, string $base, bool $fullWidth = false): string
     {
-        $w   = (int)($col['width'] ?? 100);
+        $w   = max(1, min(100, (int)($col['width'] ?? 100)));
         $pad = $fullWidth ? '0' : '0 12px';
         $css = "flex:0 0 {$w}%;max-width:{$w}%;padding:{$pad};margin:0;box-sizing:border-box;";
-        if (!empty($col['settings']['padding'])) $css .= "padding:{$col['settings']['padding']};";
+        if (!empty($col['settings']['padding'])) $css .= 'padding:' . $this->cssVal($col['settings']['padding']) . ';';
 
         $inner = '';
         foreach ($col['elements'] ?? [] as $el) {
@@ -254,6 +285,8 @@ final class BuilderService
             'html'       => $this->renderHtml($s),
             'posts_grid' => $this->renderPostsGrid($s, $base),
             'slider'     => $this->renderSlider($s),
+            'ad_zone'    => $this->renderAdZone($s),
+            'gccounter'  => $this->renderGcCounter($s),
             default      => '',
         };
     }
@@ -262,22 +295,22 @@ final class BuilderService
 
     private function renderHeading(array $s): string
     {
-        $tag   = htmlspecialchars($s['tag'] ?? 'h2', ENT_QUOTES);
+        $tag   = in_array($s['tag'] ?? 'h2', ['h1','h2','h3','h4','h5','h6'], true) ? $s['tag'] : 'h2';
         $text  = htmlspecialchars($s['text'] ?? '', ENT_QUOTES);
-        $align = $s['align'] ?? 'left';
+        $align = $this->alignVal($s['align'] ?? 'left');
         $css   = "text-align:{$align};";
-        if (!empty($s['color'])) $css .= "color:{$s['color']};";
-        if (!empty($s['size']))  $css .= "font-size:{$s['size']};";
+        if (!empty($s['color'])) $css .= 'color:' . $this->cssVal($s['color']) . ';';
+        if (!empty($s['size']))  $css .= 'font-size:' . $this->cssVal($s['size']) . ';';
         return "<{$tag} class=\"gb-heading\" style=\"{$css}\">{$text}</{$tag}>";
     }
 
     private function renderText(array $s): string
     {
         $content = $s['content'] ?? '';
-        $align   = $s['align'] ?? 'left';
+        $align   = $this->alignVal($s['align'] ?? 'left');
         $css     = "text-align:{$align};";
-        if (!empty($s['color'])) $css .= "color:{$s['color']};";
-        if (!empty($s['size']))  $css .= "font-size:{$s['size']};";
+        if (!empty($s['color'])) $css .= 'color:' . $this->cssVal($s['color']) . ';';
+        if (!empty($s['size']))  $css .= 'font-size:' . $this->cssVal($s['size']) . ';';
         return "<div class=\"gb-text\" style=\"{$css}\">" . nl2br(htmlspecialchars($content, ENT_QUOTES)) . "</div>";
     }
 
@@ -287,7 +320,7 @@ final class BuilderService
         $src    = htmlspecialchars($s['src'],             ENT_QUOTES);
         $alt    = htmlspecialchars($s['alt']   ?? '',     ENT_QUOTES);
         $title  = htmlspecialchars($s['title'] ?? '',     ENT_QUOTES);
-        $align  = $s['align']      ?? 'center';
+        $align  = $this->alignVal($s['align'] ?? 'center', 'center');
         $width  = htmlspecialchars($s['width'] ?? '100%', ENT_QUOTES);
         $height = htmlspecialchars($s['height'] ?? '',    ENT_QUOTES);
         $radius = htmlspecialchars($s['radius'] ?? '0px', ENT_QUOTES);
@@ -308,6 +341,7 @@ final class BuilderService
             default => 'none',
         };
 
+        $fit      = in_array($fit, ['cover','contain','fill','none'], true) ? $fit : 'cover';
         $imgStyle = "width:{$width};border-radius:{$radius};display:block;max-width:100%;opacity:{$opacity};";
         if ($height)          $imgStyle .= "height:{$height};object-fit:{$fit};";
         if ($filter !== 'none') $imgStyle .= "filter:{$filter};";
@@ -327,7 +361,15 @@ final class BuilderService
               . htmlspecialchars($s['caption'], ENT_QUOTES) . '</figcaption>'
             : '';
 
-        return "<figure class=\"gb-image\" style=\"text-align:{$align};margin:0\">{$img}{$caption}</figure>";
+        // The <img> is display:block, so text-align alone won't position a
+        // fixed-width image. Use flex so center/right work whether or not the
+        // image is wrapped in a link.
+        $alignItems = match($align) {
+            'center' => 'center',
+            'right'  => 'flex-end',
+            default  => 'flex-start',
+        };
+        return "<figure class=\"gb-image\" style=\"display:flex;flex-direction:column;align-items:{$alignItems};text-align:{$align};margin:0\">{$img}{$caption}</figure>";
     }
 
     private function renderButton(array $s): string
@@ -335,7 +377,7 @@ final class BuilderService
         $text   = htmlspecialchars($s['text'] ?? 'Click', ENT_QUOTES);
         $url    = htmlspecialchars($s['url']  ?? '#',     ENT_QUOTES);
         $target = ($s['target'] ?? '_self') === '_blank' ? ' target="_blank" rel="noopener"' : '';
-        $align  = $s['align']  ?? 'left';
+        $align  = $this->alignVal($s['align'] ?? 'left');
         $style  = $s['style']  ?? 'primary';
         $size   = $s['size']   ?? 'md';
         $radius = htmlspecialchars($s['radius'] ?? '8px', ENT_QUOTES);
@@ -367,7 +409,7 @@ final class BuilderService
         $color = htmlspecialchars($s['color'] ?? '#e2e8f0', ENT_QUOTES);
         $thick = htmlspecialchars($s['thickness'] ?? '1px', ENT_QUOTES);
         $width = htmlspecialchars($s['width'] ?? '100%', ENT_QUOTES);
-        $align = $s['align'] ?? 'center';
+        $align = $this->alignVal($s['align'] ?? 'center', 'center');
         return "<div class=\"gb-divider\" style=\"text-align:{$align}\">"
             . "<hr style=\"border:none;border-top:{$thick} solid {$color};width:{$width};margin:12px auto\"></div>";
     }
@@ -380,7 +422,8 @@ final class BuilderService
         $embedUrl = $this->toEmbedUrl($url);
         $aspect   = $s['aspect'] ?? '16:9';
         [$w, $h]  = explode(':', $aspect . ':9');
-        $padding  = round((int)$h / (int)$w * 100, 2);
+        $w        = max(1, (int)$w);
+        $padding  = round((int)$h / $w * 100, 2);
 
         return "<div class=\"gb-video\" style=\"position:relative;padding-bottom:{$padding}%;height:0;overflow:hidden\">"
             . "<iframe src=\"{$embedUrl}\" style=\"position:absolute;top:0;left:0;width:100%;height:100%;border:none\" allowfullscreen loading=\"lazy\"></iframe>"
@@ -402,7 +445,7 @@ final class BuilderService
     {
         $images  = array_filter(array_map('trim', explode("\n", $s['images'] ?? '')));
         if (!$images) return '';
-        $cols    = (int)($s['columns'] ?? 3);
+        $cols    = max(1, min(6, (int)($s['columns'] ?? 3)));
         $gap     = htmlspecialchars($s['gap'] ?? '8px', ENT_QUOTES);
         $radius  = htmlspecialchars($s['radius'] ?? '6px', ENT_QUOTES);
         $css     = "display:grid;grid-template-columns:repeat({$cols},1fr);gap:{$gap};";
@@ -419,7 +462,7 @@ final class BuilderService
         $icon   = htmlspecialchars($s['icon'] ?? '⚡', ENT_QUOTES);
         $title  = htmlspecialchars($s['title'] ?? '', ENT_QUOTES);
         $text   = htmlspecialchars($s['text'] ?? '', ENT_QUOTES);
-        $align  = $s['align'] ?? 'left';
+        $align  = $this->alignVal($s['align'] ?? 'left');
         $isize  = htmlspecialchars($s['icon_size'] ?? '36px', ENT_QUOTES);
         return "<div class=\"gb-icon-box\" style=\"text-align:{$align}\">"
             . "<div style=\"font-size:{$isize};margin-bottom:12px\">{$icon}</div>"
@@ -433,7 +476,7 @@ final class BuilderService
         $num    = htmlspecialchars($s['number'] ?? '0', ENT_QUOTES);
         $suffix = htmlspecialchars($s['suffix'] ?? '', ENT_QUOTES);
         $label  = htmlspecialchars($s['label']  ?? '', ENT_QUOTES);
-        $align  = $s['align'] ?? 'center';
+        $align  = $this->alignVal($s['align'] ?? 'center', 'center');
         $color  = htmlspecialchars($s['color'] ?? '#10B27C', ENT_QUOTES);
         return "<div class=\"gb-counter\" style=\"text-align:{$align}\">"
             . "<div class=\"gb-counter-num\" data-target=\"{$num}\" style=\"font-size:48px;font-weight:900;color:{$color};line-height:1\">{$num}{$suffix}</div>"
@@ -473,8 +516,8 @@ final class BuilderService
 
     private function renderPostsGrid(array $s, string $base): string
     {
-        $count    = max(1, (int)($s['count'] ?? 3));
-        $cols     = (int)($s['columns'] ?? 3);
+        $count    = max(1, min(50, (int)($s['count'] ?? 3)));
+        $cols     = max(1, min(6, (int)($s['columns'] ?? 3)));
         $catSlug  = trim($s['category'] ?? '');
         $showExc  = ($s['show_excerpt'] ?? '1') === '1';
         $showDate = ($s['show_date']    ?? '1') === '1';
@@ -550,12 +593,86 @@ final class BuilderService
         return '[parallax_slider id="' . $id . '"]';
     }
 
+    // ── Ad Zone ───────────────────────────────────────────────────────────────
+
+    private function renderAdZone(array $s): string
+    {
+        $slug  = trim((string)($s['slug'] ?? ''));
+        $limit = max(0, (int)($s['limit'] ?? 1));
+        if ($slug === '') {
+            return '<div class="gb-ad-zone-empty" style="border:2px dashed #fcd34d;background:#fefce8;'
+                 . 'padding:20px;border-radius:8px;text-align:center;color:#92400e;font-size:13px">'
+                 . '📢 Ad Zone — zone-ის slug არ არის მითითებული</div>';
+        }
+        if (function_exists('gsads')) {
+            $html = gsads($slug, $limit);
+            // gsads returns '' when zone inactive or no eligible ads
+            return $html !== ''
+                ? $html
+                : '<div class="gb-ad-zone-empty" style="border:2px dashed #e2e8f0;background:#f8fafc;'
+                  . 'padding:16px;border-radius:8px;text-align:center;color:#94a3b8;font-size:12px">'
+                  . '📢 ' . htmlspecialchars($slug, ENT_QUOTES) . ' — active ads not found</div>';
+        }
+        return '';
+    }
+
+    private function renderGcCounter(array $s): string
+    {
+        $id = (int)($s['group_id'] ?? 0);
+        if (!$id) {
+            return '<div style="border:2px dashed #c7d2fe;background:#eef2ff;padding:20px;'
+                 . 'border-radius:8px;text-align:center;color:#4338ca;font-size:13px">'
+                 . '<div style="font-size:24px;margin-bottom:4px">🔢</div>'
+                 . '<strong>GC Counter</strong> <span style="opacity:.6">(group not set)</span></div>';
+        }
+        if (function_exists('gccounter')) {
+            \GCCounter\GCCounterService::resetAssets();
+            return gccounter($id);
+        }
+        return '';
+    }
+
+    /** Build id→name map for the gccounter element schema dropdown. */
+    private function counterGroupOptions(): array
+    {
+        try {
+            $groups = $this->qb->table('gccounter_groups')->orderBy('name', 'ASC')->get();
+            $opts   = ['' => '— Group-ის არჩევა —'];
+            foreach ($groups as $g) {
+                $opts[(string)(int)$g['id']] = (string)$g['name'] . ' (id=' . (int)$g['id'] . ')';
+            }
+            return $opts;
+        } catch (\Throwable) {
+            return ['' => '— Group-ის არჩევა —'];
+        }
+    }
+
+    /** Build slug→name map for the ad_zone element schema dropdown. */
+    private function adZoneOptions(): array
+    {
+        try {
+            $zones = $this->qb->table('gsads_zones')
+                ->where('active', '=', 1)
+                ->orderBy('name', 'ASC')
+                ->get();
+            $opts = ['' => '— Zone-ის არჩევა —'];
+            foreach ($zones as $z) {
+                $slug = (string)($z['slug'] ?? '');
+                $name = (string)($z['name'] ?? $slug);
+                $opts[$slug] = $name . ' (' . $slug . ')';
+            }
+            return $opts;
+        } catch (\Throwable) {
+            return ['' => '— Zone-ის არჩევა —'];
+        }
+    }
+
     // ── Section CSS helper ────────────────────────────────────────────────────
 
     private function sectionCss(array $st): string
     {
         $css = '';
-        if (!empty($st['bg_color']))  $css .= "background-color:{$st['bg_color']};";
+        if (!empty($st['bg_color']))  $css .= 'background-color:' . $this->cssVal($st['bg_color']) . ';';
         if (!empty($st['bg_image']))  {
             $img  = htmlspecialchars($st['bg_image'], ENT_QUOTES);
             $css .= "background-image:url('{$img}');background-size:cover;background-position:center;";
@@ -563,7 +680,7 @@ final class BuilderService
         // Use stored padding; fall back to 60px 0 only when truly unset (not when explicitly "0" or "0px")
         $pad = isset($st['padding']) ? trim((string)$st['padding']) : null;
         if ($pad === null) $pad = '60px 0';
-        $css .= "padding:{$pad};";
+        $css .= 'padding:' . $this->cssVal($pad) . ';';
         return $css;
     }
 }

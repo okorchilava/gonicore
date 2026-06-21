@@ -10,6 +10,7 @@ use GoniCore\Core\Http\Request;
 use GoniCore\Core\Http\Response;
 use GoniCore\Modules\Category\CategoryRepository;
 use GoniCore\Modules\Login\LoginService;
+use GoniCore\Modules\Login\SessionManager;
 use GoniCore\Modules\Language\LanguageRepository;
 use GoniCore\Modules\Language\LanguageService;
 use GoniCore\Modules\Notifications\NotificationService;
@@ -47,9 +48,16 @@ final class ManageController
         private readonly MenuService          $menuService,
         private readonly HookManager          $hookManager,
         private readonly QueryBuilder         $qb,
+        private readonly SessionManager       $sessionMgr,
         private readonly string               $siteName = 'GoniCore',
     ) {
         $this->viewsDir = dirname(__DIR__, 3) . '/themes/default/views/manage';
+    }
+
+    private function flash(string $msg, string $icon = 'success'): void
+    {
+        $this->sessionMgr->flash('gc_msg',  $msg);
+        $this->sessionMgr->flash('gc_icon', $icon);
     }
 
     // ── Auth guard ────────────────────────────────────────────────────────────
@@ -58,6 +66,12 @@ final class ManageController
     {
         if (!$this->auth->isLoggedIn()) {
             return Response::redirect($request->basePath() . '/login?redirect=' . urlencode($request->path()));
+        }
+        // CSRF: every state-changing request must carry the session token.
+        if ($request->method() === 'POST'
+            && !$this->sessionMgr->verifyCsrf((string) $request->post('_csrf', ''))) {
+            $this->flash('Security token expired — please try again.', 'error');
+            return Response::redirect($request->basePath() . '/manage');
         }
         return null;
     }
@@ -84,7 +98,7 @@ final class ManageController
         ];
 
         $server = $this->serverStats();
-        $activity = $this->logger->recent(15);
+        $activity = $this->logger->recent(30);
         $todoList = $user ? $this->todos->allForUser((int) $user['id']) : [];
         $recentPosts = $this->posts->query()->orderBy('created_at', 'DESC')->limit(5)->get();
 
@@ -163,11 +177,12 @@ final class ManageController
 
         $this->logger->log('post.created', $user ? (int) $user['id'] : null, 'post', (int) $id, ['title' => $title]);
         $this->notifications->postCreated($title, $user ? (int) $user['id'] : 0);
+        $this->hookManager->emit('post.created', (int) $id, ['title' => $title, 'status' => $status, 'author_id' => (int) ($user['id'] ?? 0)]);
 
         if ($this->settingsService->get('notify_post_new', '1') === '1') {
             $author  = $user ? htmlspecialchars((string)$user['name'], ENT_QUOTES) : 'Unknown';
             $manageUrl = $request->basePath() . '/manage/posts/' . (int)$id;
-            $this->hookManager->doAction('admin.notify',
+            $this->hookManager->emit('admin.notify',
                 "New post: {$title}",
                 "<p>A new <strong>" . ($status === 'published' ? 'published' : 'draft') . "</strong> post has been created.</p>"
                 . "<table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px'>"
@@ -180,6 +195,7 @@ final class ManageController
             );
         }
 
+        $this->flash('Post created.');
         return Response::redirect($request->basePath() . '/manage/posts');
     }
 
@@ -226,7 +242,9 @@ final class ManageController
         $this->qb->table('posts')->where('id', '=', $id)->update($data);
         $this->logger->log('post.updated', $user ? (int) $user['id'] : null, 'post', $id, ['title' => $data['title']]);
         $this->notifications->postUpdated($data['title'], $user ? (int) $user['id'] : 0);
+        $this->hookManager->emit('post.updated', $id, $data);
 
+        $this->flash('Post updated.');
         return Response::redirect($request->basePath() . '/manage/posts');
     }
 
@@ -240,7 +258,9 @@ final class ManageController
         $this->qb->table('posts')->where('id', '=', $id)->delete();
         $this->logger->log('post.deleted', $user ? (int) $user['id'] : null, 'post', $id, ['title' => $post['title'] ?? '']);
         $this->notifications->postDeleted((string)($post['title'] ?? ''), $user ? (int) $user['id'] : 0);
+        $this->hookManager->emit('post.deleted', $id, (string) ($post['title'] ?? ''));
 
+        $this->flash('Post deleted.');
         return Response::redirect($request->basePath() . '/manage/posts');
     }
 
@@ -291,6 +311,7 @@ final class ManageController
             'parent_id'      => $parentId,
             'author_id'      => $user ? (int) $user['id'] : 0,
         ]);
+        $this->flash('Page created.');
         return Response::redirect($request->basePath() . '/manage/pages');
     }
 
@@ -324,6 +345,7 @@ final class ManageController
             'parent_id'      => $request->post('parent_id') ? (int) $request->post('parent_id') : null,
         ]);
         $this->logger->log('page.updated', $user ? (int) $user['id'] : null, 'page', $id);
+        $this->flash('Page updated.');
         return Response::redirect($request->basePath() . '/manage/pages');
     }
 
@@ -334,6 +356,7 @@ final class ManageController
         $id   = (int) $request->getAttribute('id');
         $this->qb->table('posts')->where('id', '=', $id)->where('type', '=', 'page')->delete();
         $this->logger->log('page.deleted', $user ? (int) $user['id'] : null, 'page', $id);
+        $this->flash('Page deleted.');
         return Response::redirect($request->basePath() . '/manage/pages');
     }
 
@@ -371,16 +394,20 @@ final class ManageController
         $confirm  = (string) $request->post('password_confirm', '');
 
         if (!$name || !$email || !$password) {
-            return Response::redirect($request->basePath() . '/manage/users/new?error=' . urlencode('Name, email and password are required.'));
+            $this->flash('Name, email and password are required.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users/new');
         }
         if (strlen($password) < 8) {
-            return Response::redirect($request->basePath() . '/manage/users/new?error=' . urlencode('Password must be at least 8 characters.'));
+            $this->flash('Password must be at least 8 characters.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users/new');
         }
         if ($password !== $confirm) {
-            return Response::redirect($request->basePath() . '/manage/users/new?error=' . urlencode('Passwords do not match.'));
+            $this->flash('Passwords do not match.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users/new');
         }
         if ($this->users->findByEmail($email)) {
-            return Response::redirect($request->basePath() . '/manage/users/new?error=' . urlencode('Email already in use.'));
+            $this->flash('Email already in use.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users/new');
         }
 
         $this->qb->table('users')->insert([
@@ -394,7 +421,7 @@ final class ManageController
 
         if ($this->settingsService->get('notify_user_register', '1') === '1') {
             $manageUrl = $request->basePath() . '/manage/users';
-            $this->hookManager->doAction('admin.notify',
+            $this->hookManager->emit('admin.notify',
                 "New user registered: {$name}",
                 "<p>A new user account has been created.</p>"
                 . "<table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px'>"
@@ -407,7 +434,9 @@ final class ManageController
             );
         }
 
-        return Response::redirect($request->basePath() . '/manage/users?success=' . urlencode("User \"{$name}\" created."));
+        $this->hookManager->emit('user.created', ['name' => $name, 'email' => $email, 'role' => $role]);
+        $this->flash("User \"{$name}\" created.");
+        return Response::redirect($request->basePath() . '/manage/users');
     }
 
     public function userEdit(Request $request): Response
@@ -417,7 +446,8 @@ final class ManageController
         $id       = (int) $request->getAttribute('id');
         $editUser = $this->users->findById($id);
         if (!$editUser) {
-            return Response::redirect($request->basePath() . '/manage/users?error=User+not+found.');
+            $this->flash('User not found.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users');
         }
         $error = $request->query('error');
         return $this->render('user_form', compact('user', 'editUser', 'error'), $request);
@@ -441,10 +471,12 @@ final class ManageController
         $confirm  = (string) $request->post('password_confirm', '');
 
         if ($password && $password !== $confirm) {
-            return Response::redirect($request->basePath() . '/manage/users/' . $id . '/edit?error=' . urlencode('Passwords do not match.'));
+            $this->flash('Passwords do not match.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users/' . $id . '/edit');
         }
         if ($password && strlen($password) < 8) {
-            return Response::redirect($request->basePath() . '/manage/users/' . $id . '/edit?error=' . urlencode('Password must be at least 8 characters.'));
+            $this->flash('Password must be at least 8 characters.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users/' . $id . '/edit');
         }
 
         $data = [
@@ -459,7 +491,8 @@ final class ManageController
         }
 
         $this->qb->table('users')->where('id', '=', $id)->update($data);
-        return Response::redirect($request->basePath() . '/manage/users?success=' . urlencode('User updated.'));
+        $this->flash('User updated.');
+        return Response::redirect($request->basePath() . '/manage/users');
     }
 
     public function userDelete(Request $request): Response
@@ -468,10 +501,12 @@ final class ManageController
         $current = $this->currentUser();
         $id      = (int) $request->getAttribute('id');
         if ((int)($current['id'] ?? 0) === $id) {
-            return Response::redirect($request->basePath() . '/manage/users?error=' . urlencode('Cannot delete your own account.'));
+            $this->flash('Cannot delete your own account.', 'error');
+            return Response::redirect($request->basePath() . '/manage/users');
         }
         $this->qb->table('users')->where('id', '=', $id)->delete();
-        return Response::redirect($request->basePath() . '/manage/users?success=User+deleted.');
+        $this->flash('User deleted.');
+        return Response::redirect($request->basePath() . '/manage/users');
     }
 
     // ── Categories ────────────────────────────────────────────────────────────
@@ -498,14 +533,17 @@ final class ManageController
         $name      = trim((string) $request->post('name', ''));
         $parentId  = (int) $request->post('parent_id', 0) ?: null;
         if (!$name) {
-            return Response::redirect($request->basePath() . '/manage/categories?error=' . urlencode('Name is required.'));
+            $this->flash('Name is required.', 'error');
+            return Response::redirect($request->basePath() . '/manage/categories');
         }
         $slug = \GoniCore\Shared\Support\Str::slug($name);
         if ($this->categories->findBySlug($slug)) {
-            return Response::redirect($request->basePath() . '/manage/categories?error=' . urlencode('A category with this name already exists.'));
+            $this->flash('A category with this name already exists.', 'error');
+            return Response::redirect($request->basePath() . '/manage/categories');
         }
         $this->categories->save(['name' => $name, 'slug' => $slug, 'parent_id' => $parentId]);
-        return Response::redirect($request->basePath() . '/manage/categories?success=' . urlencode("Category \"{$name}\" created."));
+        $this->flash("Category \"{$name}\" created.");
+        return Response::redirect($request->basePath() . '/manage/categories');
     }
 
     public function categoryUpdate(Request $request): Response
@@ -515,11 +553,13 @@ final class ManageController
         $name     = trim((string) $request->post('name', ''));
         $parentId = (int) $request->post('parent_id', 0) ?: null;
         if (!$name) {
-            return Response::redirect($request->basePath() . '/manage/categories?error=' . urlencode('Name is required.'));
+            $this->flash('Name is required.', 'error');
+            return Response::redirect($request->basePath() . '/manage/categories');
         }
         $slug = \GoniCore\Shared\Support\Str::slug($name);
         $this->categories->save(['id' => $id, 'name' => $name, 'slug' => $slug, 'parent_id' => $parentId]);
-        return Response::redirect($request->basePath() . '/manage/categories?success=Category+updated.');
+        $this->flash('Category updated.');
+        return Response::redirect($request->basePath() . '/manage/categories');
     }
 
     public function categoryDelete(Request $request): Response
@@ -528,7 +568,8 @@ final class ManageController
         $id = (int) $request->getAttribute('id');
         $this->qb->table('posts')->where('category_id', '=', $id)->update(['category_id' => null]);
         $this->categories->delete($id);
-        return Response::redirect($request->basePath() . '/manage/categories?success=Category+deleted.');
+        $this->flash('Category deleted.');
+        return Response::redirect($request->basePath() . '/manage/categories');
     }
 
     // ── Menus ─────────────────────────────────────────────────────────────────
@@ -564,9 +605,13 @@ final class ManageController
     {
         if ($r = $this->guard($request)) return $r;
         $name = trim((string) $request->post('name',''));
-        if (!$name) return Response::redirect($request->basePath().'/manage/menus?error='.urlencode('Menu name required.'));
+        if (!$name) {
+            $this->flash('Menu name required.', 'error');
+            return Response::redirect($request->basePath().'/manage/menus');
+        }
         $id = $this->menuService->createMenu($name);
-        return Response::redirect($request->basePath().'/manage/menus?menu='.$id.'&success='.urlencode("Menu \"{$name}\" created."));
+        $this->flash("Menu \"{$name}\" created.");
+        return Response::redirect($request->basePath().'/manage/menus?menu='.$id);
     }
 
     public function menuDelete(Request $request): Response
@@ -574,7 +619,8 @@ final class ManageController
         if ($r = $this->guard($request)) return $r;
         $id = (int) $request->getAttribute('id');
         $this->menuService->deleteMenu($id);
-        return Response::redirect($request->basePath().'/manage/menus?success=Menu+deleted.');
+        $this->flash('Menu deleted.');
+        return Response::redirect($request->basePath().'/manage/menus');
     }
 
     public function menuRename(Request $request): Response
@@ -583,7 +629,8 @@ final class ManageController
         $id   = (int) $request->getAttribute('id');
         $name = trim((string) $request->post('name',''));
         if ($name) $this->menuService->renameMenu($id, $name);
-        return Response::redirect($request->basePath().'/manage/menus?menu='.$id.'&success=Menu+renamed.');
+        $this->flash('Menu renamed.');
+        return Response::redirect($request->basePath().'/manage/menus?menu='.$id);
     }
 
     public function menuAssignLocations(Request $request): Response
@@ -594,7 +641,8 @@ final class ManageController
             $menuId = $request->post('location_' . $loc);
             $this->menuService->assignMenuToLocation($loc, $menuId ? (int)$menuId : null);
         }
-        return Response::redirect($request->basePath().'/manage/menus?success='.urlencode('Menu locations saved.'));
+        $this->flash('Menu locations saved.');
+        return Response::redirect($request->basePath().'/manage/menus');
     }
 
     public function menuItemAdd(Request $request): Response
@@ -629,7 +677,8 @@ final class ManageController
             $this->menuService->addItem($menuId, $item);
         }
 
-        return Response::redirect($request->basePath().'/manage/menus?menu='.$menuId.'&success='.urlencode('Items added.'));
+        $this->flash('Items added.');
+        return Response::redirect($request->basePath().'/manage/menus?menu='.$menuId);
     }
 
     public function menuItemUpdate(Request $request): Response
@@ -643,7 +692,8 @@ final class ManageController
             'target'    => $request->post('target') === '_blank' ? '_blank' : '_self',
             'parent_id' => $request->post('parent_id') ? (int) $request->post('parent_id') : null,
         ]);
-        return Response::redirect($request->basePath().'/manage/menus?menu='.$menuId.'&success=Item+updated.');
+        $this->flash('Item updated.');
+        return Response::redirect($request->basePath().'/manage/menus?menu='.$menuId);
     }
 
     public function menuItemDelete(Request $request): Response
@@ -652,7 +702,8 @@ final class ManageController
         $itemId = (int) $request->getAttribute('item_id');
         $menuId = (int) $request->post('menu_id', '0');
         $this->menuService->deleteItem($itemId);
-        return Response::redirect($request->basePath().'/manage/menus?menu='.$menuId.'&success=Item+removed.');
+        $this->flash('Item removed.');
+        return Response::redirect($request->basePath().'/manage/menus?menu='.$menuId);
     }
 
     public function menuItemReorder(Request $request): Response
@@ -710,18 +761,22 @@ final class ManageController
             $row     = $this->users->findById($id);
 
             if (!$row || !password_verify($current, (string)$row['password'])) {
-                return Response::redirect($request->basePath() . '/manage/profile?error=' . urlencode('Current password is incorrect.'));
+                $this->flash('Current password is incorrect.', 'error');
+                return Response::redirect($request->basePath() . '/manage/profile');
             }
             if (strlen($new) < 8) {
-                return Response::redirect($request->basePath() . '/manage/profile?error=' . urlencode('New password must be at least 8 characters.'));
+                $this->flash('New password must be at least 8 characters.', 'error');
+                return Response::redirect($request->basePath() . '/manage/profile');
             }
             if ($new !== $confirm) {
-                return Response::redirect($request->basePath() . '/manage/profile?error=' . urlencode('Passwords do not match.'));
+                $this->flash('Passwords do not match.', 'error');
+                return Response::redirect($request->basePath() . '/manage/profile');
             }
             $this->qb->table('users')->where('id', '=', $id)->update([
                 'password' => password_hash($new, PASSWORD_BCRYPT),
             ]);
-            return Response::redirect($request->basePath() . '/manage/profile?success=' . urlencode('Password updated.'));
+            $this->flash('Password updated.');
+            return Response::redirect($request->basePath() . '/manage/profile');
         }
 
         // section = info
@@ -731,7 +786,8 @@ final class ManageController
         $phone    = trim((string) $request->post('phone', '')) ?: null;
 
         if (!$name || !$email) {
-            return Response::redirect($request->basePath() . '/manage/profile?error=' . urlencode('Name and email are required.'));
+            $this->flash('Name and email are required.', 'error');
+            return Response::redirect($request->basePath() . '/manage/profile');
         }
 
         $this->qb->table('users')->where('id', '=', $id)->update(array_filter([
@@ -741,7 +797,24 @@ final class ManageController
             'phone'    => $phone,
         ], fn($v) => $v !== null));
 
-        return Response::redirect($request->basePath() . '/manage/profile?success=' . urlencode('Profile updated.'));
+        $this->flash('Profile updated.');
+        return Response::redirect($request->basePath() . '/manage/profile');
+    }
+
+    public function profileNotifications(Request $request): Response
+    {
+        if ($r = $this->guard($request)) return $r;
+        $user  = $this->currentUser();
+        $id    = (int) ($user['id'] ?? 0);
+        // Hidden input posts '' when the checkbox is off — treat falsy as 0.
+        $value = $request->post('email_notifications') ? 1 : 0;
+
+        $this->qb->table('users')->where('id', '=', $id)->update([
+            'email_notifications' => $value,
+        ]);
+
+        $this->flash($value ? 'Email notifications enabled.' : 'Email notifications disabled.');
+        return Response::redirect($request->basePath() . '/manage/profile');
     }
 
     // ── Widgets ───────────────────────────────────────────────────────────────
@@ -765,6 +838,7 @@ final class ManageController
         $settings = $request->post('settings') ?? [];
         if (!is_array($settings)) $settings = [];
         $this->widgetRepo->create($area, $type, $title, $settings);
+        $this->flash('Widget created.');
         return Response::redirect($request->basePath() . '/manage/widgets');
     }
 
@@ -776,6 +850,7 @@ final class ManageController
         $settings = $request->post('settings') ?? [];
         if (!is_array($settings)) $settings = [];
         $this->widgetRepo->update($id, $title, $settings);
+        $this->flash('Widget updated.');
         return Response::redirect($request->basePath() . '/manage/widgets');
     }
 
@@ -783,6 +858,7 @@ final class ManageController
     {
         if ($r = $this->guard($request)) return $r;
         $this->widgetRepo->toggle((int) $request->getAttribute('id'));
+        $this->flash('Widget toggled.');
         return Response::redirect($request->basePath() . '/manage/widgets');
     }
 
@@ -790,6 +866,7 @@ final class ManageController
     {
         if ($r = $this->guard($request)) return $r;
         $this->widgetRepo->delete((int) $request->getAttribute('id'));
+        $this->flash('Widget deleted.');
         return Response::redirect($request->basePath() . '/manage/widgets');
     }
 
@@ -809,35 +886,62 @@ final class ManageController
         $file = $request->files()['plugin_zip'] ?? null;
 
         if (!$file || ($file['error'] ?? 1) !== 0 || empty($file['tmp_name'])) {
-            return Response::redirect($request->basePath() . '/manage/plugins?error=upload_failed');
+            $this->flash('Plugin upload failed.', 'error');
+            return Response::redirect($request->basePath() . '/manage/plugins');
         }
 
         try {
             $this->pluginManager->uploadZip($file['tmp_name'], $file['name']);
-            return Response::redirect($request->basePath() . '/manage/plugins?uploaded=1');
+            $this->flash('Plugin uploaded successfully.');
         } catch (\Throwable $e) {
-            return Response::redirect($request->basePath() . '/manage/plugins?error=' . urlencode($e->getMessage()));
+            $this->flash($e->getMessage(), 'error');
         }
+        return Response::redirect($request->basePath() . '/manage/plugins');
     }
 
     public function pluginActivate(Request $request): Response
     {
         if ($r = $this->guard($request)) return $r;
-        $this->pluginManager->activate((string) $request->getAttribute('slug'));
+        $user = $this->currentUser();
+        $slug = (string) $request->getAttribute('slug');
+        try {
+            // Activation runs the plugin's own migration so its tables exist
+            // before the next request bootstraps it.
+            $this->pluginManager->activate($slug);
+            $this->logger->log('plugin.activated', $user ? (int) $user['id'] : null, 'plugin', null, ['slug' => $slug]);
+            $this->flash('Plugin activated.');
+        } catch (\Throwable $e) {
+            $this->flash('Plugin activation failed: ' . $e->getMessage(), 'error');
+        }
         return Response::redirect($request->basePath() . '/manage/plugins');
     }
 
     public function pluginDeactivate(Request $request): Response
     {
         if ($r = $this->guard($request)) return $r;
-        $this->pluginManager->deactivate((string) $request->getAttribute('slug'));
+        $user = $this->currentUser();
+        $slug = (string) $request->getAttribute('slug');
+        $this->pluginManager->deactivate($slug);
+        $this->logger->log('plugin.deactivated', $user ? (int) $user['id'] : null, 'plugin', null, ['slug' => $slug]);
+        $this->flash('Plugin deactivated.');
         return Response::redirect($request->basePath() . '/manage/plugins');
     }
 
     public function pluginDelete(Request $request): Response
     {
         if ($r = $this->guard($request)) return $r;
-        $this->pluginManager->delete((string) $request->getAttribute('slug'));
+        $user = $this->currentUser();
+        $slug = (string) $request->getAttribute('slug');
+        try {
+            // Deletion drops the plugin's database tables (migration down())
+            // and then removes its files. The view shows a data-loss warning
+            // and requires explicit confirmation before this runs.
+            $this->pluginManager->delete($slug);
+            $this->logger->log('plugin.deleted', $user ? (int) $user['id'] : null, 'plugin', null, ['slug' => $slug]);
+            $this->flash('Plugin and its data deleted.');
+        } catch (\Throwable $e) {
+            $this->flash('Plugin deletion failed: ' . $e->getMessage(), 'error');
+        }
         return Response::redirect($request->basePath() . '/manage/plugins');
     }
 
@@ -908,8 +1012,12 @@ final class ManageController
                 : Response::json(['error' => $lastError], 422);
         }
 
-        $qs = $success > 0 ? '?uploaded=' . $success : '?error=' . urlencode($lastError);
-        return Response::redirect($request->basePath() . '/manage/gallery' . $qs);
+        if ($success > 0) {
+            $this->flash($success === 1 ? 'File uploaded.' : "{$success} files uploaded.");
+        } else {
+            $this->flash($lastError ?: 'Upload failed.', 'error');
+        }
+        return Response::redirect($request->basePath() . '/manage/gallery');
     }
 
     public function galleryDelete(Request $request): Response
@@ -923,6 +1031,7 @@ final class ManageController
             $full = rtrim($storageDir, '/') . '/' . ltrim((string)$row['path'], '/');
             if (is_file($full)) @unlink($full);
             $this->qb->table('media')->where('id', '=', $id)->delete();
+            $this->flash('File deleted.');
         }
         return Response::redirect($request->basePath() . '/manage/gallery');
     }
@@ -938,8 +1047,7 @@ final class ManageController
             ->where('status', '=', 'published')
             ->orderBy('title', 'ASC')
             ->get();
-        $saved = $request->query('saved') === '1';
-        return $this->render('settings', compact('user', 'settings', 'allPosts', 'saved'), $request);
+        return $this->render('settings', compact('user', 'settings', 'allPosts'), $request);
     }
 
     public function settingsSave(Request $request): Response
@@ -951,6 +1059,11 @@ final class ManageController
             'site_name', 'site_tagline', 'site_url',
             'posts_per_page', 'homepage_type', 'homepage_page_id', 'posts_page_id',
             'timezone', 'date_format', 'time_format',
+            'session_lifetime',
+            'admin_email', 'mail_from_address', 'mail_from_name',
+            'mail_driver', 'mail_smtp_host', 'mail_smtp_port', 'mail_smtp_encryption',
+            'mail_smtp_user', 'mail_smtp_pass',
+            'notify_post_new', 'notify_user_register', 'notify_comment_new',
         ];
 
         $data = [];
@@ -966,16 +1079,44 @@ final class ManageController
 
         $this->settingsService->bulk($data);
 
+        // ── Branding: logo & favicon uploads ──────────────────────────────
+        // Each is stored in the media library; the setting holds the relative
+        // media path (rendered as {base}/storage/media/{path}).
+        $uploadError = '';
+        $uid   = $user ? (int) $user['id'] : 0;
+        $files = $request->files();
+        foreach (['site_logo' => 'remove_logo', 'site_favicon' => 'remove_favicon'] as $key => $removeFlag) {
+            if ((string) $request->post($removeFlag, '') === '1') {
+                $this->settingsService->set($key, '');
+                continue;
+            }
+            $f = $files[$key] ?? null;
+            if (is_array($f) && (int) ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                try {
+                    $media = $this->mediaService->store($f, $uid);
+                    $this->qb->table('media')->insert($media); // also lists it in the gallery
+                    $this->settingsService->set($key, (string) $media['path']);
+                } catch (\Throwable $e) {
+                    $uploadError = $e->getMessage();
+                }
+            }
+        }
+
         // Apply timezone immediately
         $tz = $data['timezone'] ?? 'UTC';
         if (in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
             date_default_timezone_set($tz);
         }
 
+        $this->hookManager->emit('settings.saved', $data);
         $this->logger->log('settings.updated', $user ? (int) $user['id'] : null);
 
-        // Redirect with saved flag
-        return Response::redirect($request->basePath() . '/manage/settings?saved=1');
+        if ($uploadError !== '') {
+            $this->flash('Settings saved, but image upload failed: ' . $uploadError, 'warning');
+        } else {
+            $this->flash('Settings saved.');
+        }
+        return Response::redirect($request->basePath() . '/manage/settings');
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
@@ -1026,6 +1167,91 @@ final class ManageController
         $id   = (int) $request->getAttribute('id');
         if ($user) $this->todos->delete($id, (int) $user['id']);
         return Response::redirect($request->basePath() . '/manage');
+    }
+
+    // ── Logs ────────────────────────────────────────────────────────────────
+
+    private function logsDir(): string
+    {
+        return dirname(__DIR__, 3) . '/storage/logs';
+    }
+
+    public function logsList(Request $request): Response
+    {
+        if ($r = $this->guard($request)) return $r;
+        $user = $this->currentUser();
+
+        $files = [];
+        foreach (glob($this->logsDir() . '/*.log') ?: [] as $f) {
+            $files[] = basename($f);
+        }
+        rsort($files); // newest date first (gc-YYYY-MM-DD.log)
+
+        $selected = basename((string) $request->query('file', $files[0] ?? ''));
+        if ($selected !== '' && !in_array($selected, $files, true)) {
+            $selected = $files[0] ?? '';
+        }
+
+        $level   = strtolower(trim((string) $request->query('level', '')));
+        $entries = $selected !== '' ? $this->parseLog($this->logsDir() . '/' . $selected) : [];
+        if ($level !== '') {
+            $entries = array_values(array_filter(
+                $entries,
+                static fn(array $e): bool => ($e['level'] ?? '') === $level,
+            ));
+        }
+
+        return $this->render('logs', compact('user', 'files', 'selected', 'entries', 'level'), $request);
+    }
+
+    public function logsClear(Request $request): Response
+    {
+        if ($r = $this->guard($request)) return $r;
+        $dir = $this->logsDir();
+
+        if ($request->post('all') !== null) {
+            foreach (glob($dir . '/*.log') ?: [] as $f) { @unlink($f); }
+            $this->flash('All logs cleared.');
+        } else {
+            $file = basename((string) $request->post('file', ''));
+            if ($file !== '' && str_ends_with($file, '.log') && is_file($dir . '/' . $file)) {
+                @unlink($dir . '/' . $file);
+                $this->flash('Log file cleared.');
+            }
+        }
+        return Response::redirect($request->basePath() . '/manage/logs');
+    }
+
+    /**
+     * Parse a log file into entries (newest first). Each entry is a timestamped
+     * line plus any following stack-trace lines. Capped for memory safety.
+     *
+     * @return list<array{time:string,level:string,message:string,trace:string}>
+     */
+    private function parseLog(string $path): array
+    {
+        if (!is_file($path)) return [];
+        $raw = (string) @file_get_contents($path);
+        if ($raw === '') return [];
+
+        // Only keep the tail of very large files.
+        if (strlen($raw) > 500000) {
+            $raw = substr($raw, -500000);
+        }
+
+        $entries = [];
+        $cur     = null;
+        foreach (explode("\n", $raw) as $ln) {
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([A-Za-z]+):\s?(.*)$/', $ln, $m)) {
+                if ($cur !== null) $entries[] = $cur;
+                $cur = ['time' => $m[1], 'level' => strtolower($m[2]), 'message' => $m[3], 'trace' => ''];
+            } elseif ($cur !== null && trim($ln) !== '') {
+                $cur['trace'] .= ($cur['trace'] !== '' ? "\n" : '') . $ln;
+            }
+        }
+        if ($cur !== null) $entries[] = $cur;
+
+        return array_slice(array_reverse($entries), 0, 500);
     }
 
     // ── Server stats ──────────────────────────────────────────────────────────
@@ -1089,6 +1315,10 @@ final class ManageController
     {
         require_once dirname(__DIR__, 3) . '/themes/default/views/helpers.php';
 
+        // Load translations for the panel language so t() works in views.
+        $this->langService->boot($request);
+        $GLOBALS['langService'] = $this->langService;
+
         $viewFile = $this->viewsDir . '/' . $template . '.php';
         if (!is_file($viewFile)) return Response::error("Manage view not found: {$template}", 500);
 
@@ -1104,6 +1334,13 @@ final class ManageController
         // Language switcher in panel topbar
         $panelLangs      = $this->langRepo->allActive();
         $currentLangCode = $this->langService->currentCode();
+
+        // One-shot flash message → SweetAlert2 toast in layout
+        $flashMsg  = $this->sessionMgr->getFlash('gc_msg');
+        $flashIcon = $this->sessionMgr->getFlash('gc_icon') ?? 'success';
+
+        // CSRF token — layout injects it into every POST form
+        $csrfToken = $this->sessionMgr->csrfToken();
 
         extract($data, EXTR_SKIP);
 

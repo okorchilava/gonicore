@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign In — <?= e($siteName) ?></title>
+<title><?= e(t('login.title')) ?> — <?= e($siteName) ?></title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.8/sweetalert2.min.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -281,17 +282,11 @@ body {
 <div class="login-wrap">
     <div>
         <div class="login-card">
-            <h1 class="login-card-title">Welcome back</h1>
-            <p class="login-card-sub">Sign in to your <?= e($siteName) ?> account</p>
-
-            <?php if (!empty($error)): ?>
-            <div class="login-error">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#dc2626" stroke-width="1.5"/><path d="M8 4.5v4M8 10.5v1" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round"/></svg>
-                <?= e($error) ?>
-            </div>
-            <?php endif ?>
+            <h1 class="login-card-title"><?= e(t('login.title')) ?></h1>
+            <p class="login-card-sub"><?= e($siteName) ?></p>
 
             <form method="POST" action="<?= e($base) ?>/login" autocomplete="on">
+                <input type="hidden" name="_csrf" value="<?= e($csrf ?? '') ?>">
                 <input type="hidden" name="redirect" value="<?= e($_GET['redirect'] ?? '') ?>">
 
                 <div class="field">
@@ -305,7 +300,7 @@ body {
                         autofocus
                         required
                     >
-                    <label for="identifier">Email, username or phone</label>
+                    <label for="identifier"><?= e(t('login.email')) ?></label>
                 </div>
 
                 <div class="field">
@@ -317,24 +312,23 @@ body {
                         autocomplete="current-password"
                         required
                     >
-                    <label for="password">Password</label>
+                    <label for="password"><?= e(t('login.password')) ?></label>
                 </div>
 
                 <div class="login-meta">
                     <label class="checkbox-label">
                         <input type="checkbox" name="remember_me" value="1">
-                        Remember me
+                        <?= e(t('login.remember')) ?>
                     </label>
-                    <a href="#" class="forgot-link">Forgot password?</a>
                 </div>
 
-                <button type="submit" class="btn-login">Sign in</button>
+                <button type="submit" class="btn-login"><?= e(t('login.submit')) ?></button>
             </form>
 
             <?php
             // Plugin slot — OAuth / SSO buttons
             ob_start();
-            $hooks->doAction('login_form_buttons', $base);
+            $hooks->emit('login_form_buttons', $base);
             $pluginButtons = ob_get_clean();
             ?>
             <?php if (trim($pluginButtons) !== ''): ?>
@@ -351,6 +345,23 @@ body {
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.8/sweetalert2.all.min.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('<?= e($base) ?>/sw.js').catch(function(){});
+}
+</script>
+<?php if (!empty($error)): ?>
+<script>
+Swal.fire({
+    icon: 'error',
+    title: <?= json_encode(t('login.title'), JSON_UNESCAPED_UNICODE) ?>,
+    text:  <?= json_encode((string)$error, JSON_UNESCAPED_UNICODE) ?>,
+    confirmButtonColor: '#10B27C',
+    customClass: { popup: 'gc-swal-popup' }
+});
+</script>
+<?php endif ?>
 <script>
 (function () {
     var ns = 'http://www.w3.org/2000/svg';

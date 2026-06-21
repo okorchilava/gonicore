@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($pageTitle ?? 'Manage') ?> — <?= e($siteName) ?></title>
+<?php $__fav = function_exists('gc_setting') ? (string) gc_setting('site_favicon', '') : ''; if ($__fav !== ''): ?>
+<link rel="icon" href="<?= e($base) ?>/storage/media/<?= e($__fav) ?>">
+<?php endif ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.8/sweetalert2.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -29,18 +35,44 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* ── Material Symbols icons ─────────────────────────── */
+.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal; font-style: normal;
+    font-size: 20px; line-height: 1; letter-spacing: normal;
+    text-transform: none; display: inline-flex;
+    align-items: center; justify-content: center;
+    white-space: nowrap; direction: ltr; vertical-align: middle;
+    -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    user-select: none;
+}
+.mi-sm { font-size: 18px; }
+.mi-lg { font-size: 22px; }
+
 /* ── Sidebar ───────────────────────────────────────── */
 .sidebar {
     width: var(--sidebar-w);
     background: var(--sidebar-bg);
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     position: fixed;
     top: 0; left: 0;
     z-index: 100;
     flex-shrink: 0;
+    overflow: hidden;
 }
+.sidebar-nav-wrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.12) transparent;
+}
+.sidebar-nav-wrap::-webkit-scrollbar { width: 4px; }
+.sidebar-nav-wrap::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
 .sidebar-logo {
     height: var(--topbar-h);
     border-bottom: 1px solid rgba(255,255,255,.06);
@@ -73,7 +105,23 @@ a:hover { text-decoration: underline; }
 }
 .sidebar-nav li a:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
 .sidebar-nav li a.active { background: rgba(16,178,124,.15); color: var(--accent); }
-.sidebar-nav li a .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+.sidebar-nav li.nav-sub a { padding: 7px 12px 7px 34px; font-size: 13px; color: #64748b; }
+.sidebar-nav li.nav-sub a:hover { color: #e2e8f0; }
+.sidebar-nav li.nav-sub a.active { background: rgba(16,178,124,.10); color: var(--accent); }
+.nav-parent-toggle {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 7px;
+    font-size: 13.5px; font-weight: 500; color: #94a3b8;
+    cursor: pointer; transition: background .15s, color .15s;
+    user-select: none;
+}
+.nav-parent-toggle:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
+.nav-parent-toggle.open { color: #e2e8f0; }
+.nav-arrow { margin-left: auto; font-size: 10px; transition: transform .2s; display: inline-block; }
+.nav-parent-toggle.open .nav-arrow { transform: rotate(180deg); }
+.nav-children { list-style: none; padding: 0; overflow: hidden; max-height: 0; transition: max-height .25s ease; }
+.nav-children.open { max-height: 600px; }
+.sidebar-nav li a .nav-icon { font-size: 20px; width: 22px; text-align: center; flex-shrink: 0; }
 
 /* Collapsible groups */
 .nav-group-toggle {
@@ -182,15 +230,18 @@ a:hover { text-decoration: underline; }
 .stat-card.c-blue   { background: linear-gradient(135deg, #0284c7, #0ea5e9); }
 .stat-card.c-violet { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
 
-/* ── Sortable widget grid ───────────────────────────── */
+/* ── Sortable widget grid (Pinterest-style masonry) ──── */
 .widget-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    align-items: start;
+    column-count: 3;
+    column-gap: 20px;
 }
 .widget {
     cursor: default;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+    width: 100%;
     transition: box-shadow .2s, opacity .2s, transform .15s;
 }
 .widget.dragging { opacity: .45; transform: scale(.97); }
@@ -289,65 +340,91 @@ tr:hover td { background: var(--bg); }
 /* ── Notification dropdown ─────────────────────────── */
 .notif-dropdown {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 10px);
     right: 0;
-    width: 340px;
+    width: 380px;
+    max-width: calc(100vw - 32px);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(15,23,42,.16);
     z-index: 200;
     overflow: hidden;
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-6px) scale(.98);
+    transform-origin: top right;
     pointer-events: none;
-    transition: opacity .15s ease, transform .15s ease;
+    transition: opacity .16s ease, transform .16s ease;
 }
-.notif-dropdown.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.notif-dropdown.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 .notif-header {
-    padding: 14px 16px 10px;
+    padding: 14px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
     border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(16,178,124,.06), transparent);
 }
-.notif-header h4 { font-size: 13px; font-weight: 700; }
+.notif-header h4 { font-size: 14px; font-weight: 700; color: var(--text); }
 .notif-read-all {
-    font-size: 11px; font-weight: 600; color: var(--accent);
+    font-size: 11.5px; font-weight: 600; color: var(--accent);
     background: none; border: none; cursor: pointer; font-family: var(--font);
-    padding: 3px 6px; border-radius: 4px;
+    padding: 4px 8px; border-radius: 6px; white-space: nowrap; transition: background .12s;
 }
 .notif-read-all:hover { background: #f0fdf4; }
-.notif-list { max-height: 340px; overflow-y: auto; }
+.notif-list { max-height: 380px; overflow-y: auto; overflow-x: hidden; }
+.notif-list::-webkit-scrollbar { width: 7px; }
+.notif-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.notif-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .notif-item {
+    position: relative;
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 12px 16px;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px 16px 13px 18px;
+    border: none;
     border-bottom: 1px solid var(--border);
-    transition: background .12s;
+    background: var(--surface);
+    text-align: left;
+    font-family: var(--font);
+    color: inherit;
     cursor: pointer;
     text-decoration: none;
+    transition: background .12s;
 }
 .notif-item:last-child { border-bottom: none; }
 .notif-item:hover { background: var(--bg); }
-.notif-item.unread { background: #f0fdf4; }
-.notif-item.unread:hover { background: #dcfce7; }
+.notif-item.unread { background: rgba(16,178,124,.06); }
+.notif-item.unread::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--accent);
+}
+.notif-item.unread:hover { background: rgba(16,178,124,.11); }
 .notif-icon-wrap {
-    width: 34px; height: 34px;
-    border-radius: 8px;
+    width: 38px; height: 38px;
+    border-radius: 10px;
     background: var(--bg);
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
+    font-size: 17px;
     flex-shrink: 0;
     border: 1px solid var(--border);
+    color: var(--muted);
 }
-.notif-item.unread .notif-icon-wrap { background: #dcfce7; border-color: #bbf7d0; }
+.notif-item.unread .notif-icon-wrap {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    border-color: #bbf7d0; color: #15803d;
+}
 .notif-body { flex: 1; min-width: 0; }
-.notif-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-.notif-msg { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notif-time { font-size: 11px; color: var(--muted); white-space: nowrap; margin-top: 3px; }
-.notif-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+.notif-title { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; line-height: 1.35; }
+.notif-msg {
+    font-size: 12.5px; color: var(--muted); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.notif-time { font-size: 11px; color: var(--muted); margin-top: 5px; opacity: .85; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 0 3px rgba(16,178,124,.15); }
 .notif-empty { text-align: center; padding: 32px 16px; color: var(--muted); font-size: 13px; }
 .notif-empty-icon { font-size: 28px; margin-bottom: 8px; }
 
@@ -442,7 +519,11 @@ tr:hover td { background: var(--bg); }
 .btn-ghost:hover { background: var(--bg); text-decoration: none; color: var(--text); }
 
 /* ── Activity log ──────────────────────────────────── */
-.activity-list { list-style: none; }
+/* Show ~10 entries, then scroll vertically inside the card. */
+.activity-list { list-style: none; max-height: 430px; overflow-y: auto; scrollbar-width: thin; }
+.activity-list::-webkit-scrollbar { width: 6px; }
+.activity-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.activity-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .activity-item:last-child { border-bottom: none; }
 .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
@@ -524,13 +605,13 @@ tr:hover td { background: var(--bg); }
 
 @media (max-width: 1200px) {
     .stat-grid { grid-template-columns: repeat(3, 1fr); }
-    .widget-grid { grid-template-columns: 1fr 1fr; }
+    .widget-grid { column-count: 2; }
 }
 @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .main-wrap { margin-left: 0; }
     .stat-grid { grid-template-columns: 1fr 1fr; }
-    .widget-grid { grid-template-columns: 1fr; }
+    .widget-grid { column-count: 1; }
 }
 </style>
 </head>
@@ -548,139 +629,72 @@ tr:hover td { background: var(--bg); }
         </a>
     </div>
 
-    <?php
-    $_nav   = $activeNav ?? '';
-    $_groups = [
-        'content'    => ['posts','categories','pages'],
-        'media'      => ['gallery'],
-        'appearance' => ['menus','widgets','themes'],
-        'users'      => ['users','profile'],
-        'tools'      => ['languages','plugins','settings','sliders','store'],
-    ];
-    // Determine which group is open based on active nav
-    $_openGroup = '';
-    foreach ($_groups as $_gk => $_gitems) {
-        if (in_array($_nav, $_gitems, true)) { $_openGroup = $_gk; break; }
-    }
-    ?>
-    <ul class="sidebar-nav" style="padding-top:12px">
+    <?php $_nav = $activeNav ?? ''; ?>
+    <div class="sidebar-nav-wrap">
+    <ul class="sidebar-nav" style="padding-top:8px;padding-bottom:16px">
 
-        <!-- Dashboard (standalone) -->
-        <li><a href="<?= e($base) ?>/manage" class="<?= $_nav === 'dashboard' ? 'active' : '' ?>">
-            <span class="nav-icon">◈</span> Dashboard
+        <li><a href="<?= e($base) ?>/manage" class="<?= $_nav==='dashboard'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">dashboard</span> <?= e(t('nav.dashboard')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/posts" class="<?= in_array($_nav,['posts','post_form'])?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">article</span> <?= e(t('nav.posts')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/categories" class="<?= $_nav==='categories'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">folder</span> <?= e(t('nav.categories')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/pages" class="<?= $_nav==='pages'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">description</span> <?= e(t('nav.pages')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/gallery" class="<?= $_nav==='gallery'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">photo_library</span> <?= e(t('nav.gallery')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/menus" class="<?= $_nav==='menus'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">menu</span> <?= e(t('nav.menus')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/widgets" class="<?= $_nav==='widgets'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">widgets</span> <?= e(t('nav.widgets')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/users" class="<?= $_nav==='users'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">group</span> <?= e(t('nav.users')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/profile" class="<?= $_nav==='profile'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">person</span> <?= e(t('nav.profile')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/languages" class="<?= $_nav==='languages'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">language</span> <?= e(t('nav.languages')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/plugins" class="<?= $_nav==='plugins'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">extension</span> <?= e(t('nav.plugins')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/settings" class="<?= $_nav==='settings'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">settings</span> <?= e(t('nav.settings')) ?>
+        </a></li>
+        <li><a href="<?= e($base) ?>/manage/logs" class="<?= $_nav==='logs'?'active':'' ?>">
+            <span class="nav-icon material-symbols-outlined">receipt_long</span> <?= e(t('nav.logs')) ?>
         </a></li>
 
-        <!-- Content group -->
-        <li>
-            <div class="nav-group-toggle <?= $_openGroup==='content'?'open':'' ?>" onclick="toggleNavGroup(this,'content')">
-                <span class="nav-icon">✦</span> Content
-                <span class="nav-group-arrow">▶</span>
-            </div>
-            <ul class="nav-group-items <?= $_openGroup==='content'?'open':'' ?>" id="navg-content">
-                <li><a href="<?= e($base) ?>/manage/posts" class="<?= in_array($_nav,['posts','post_form'])?'active':'' ?>">
-                    <span class="nav-icon">✦</span> Posts
-                </a></li>
-                <li><a href="<?= e($base) ?>/manage/categories" class="<?= $_nav==='categories'?'active':'' ?>">
-                    <span class="nav-icon">📂</span> Categories
-                </a></li>
-                <li><a href="<?= e($base) ?>/manage/pages" class="<?= $_nav==='pages'?'active':'' ?>">
-                    <span class="nav-icon">◫</span> Pages
-                </a></li>
-            </ul>
-        </li>
-
-        <!-- Media group -->
-        <li>
-            <div class="nav-group-toggle <?= $_openGroup==='media'?'open':'' ?>" onclick="toggleNavGroup(this,'media')">
-                <span class="nav-icon">🖼</span> Media
-                <span class="nav-group-arrow">▶</span>
-            </div>
-            <ul class="nav-group-items <?= $_openGroup==='media'?'open':'' ?>" id="navg-media">
-                <li><a href="<?= e($base) ?>/manage/gallery" class="<?= $_nav==='gallery'?'active':'' ?>">
-                    <span class="nav-icon">🖼</span> Gallery
-                </a></li>
-            </ul>
-        </li>
-
-        <!-- Appearance group -->
-        <li>
-            <div class="nav-group-toggle <?= $_openGroup==='appearance'?'open':'' ?>" onclick="toggleNavGroup(this,'appearance')">
-                <span class="nav-icon">◫</span> Appearance
-                <span class="nav-group-arrow">▶</span>
-            </div>
-            <ul class="nav-group-items <?= $_openGroup==='appearance'?'open':'' ?>" id="navg-appearance">
-                <li><a href="<?= e($base) ?>/manage/menus" class="<?= $_nav==='menus'?'active':'' ?>">
-                    <span class="nav-icon">☰</span> Menus
-                </a></li>
-                <li><a href="<?= e($base) ?>/manage/widgets" class="<?= $_nav==='widgets'?'active':'' ?>">
-                    <span class="nav-icon">⊞</span> Widgets
-                </a></li>
-            </ul>
-        </li>
-
-        <!-- Users group -->
-        <li>
-            <div class="nav-group-toggle <?= $_openGroup==='users'?'open':'' ?>" onclick="toggleNavGroup(this,'users')">
-                <span class="nav-icon">◉</span> Users
-                <span class="nav-group-arrow">▶</span>
-            </div>
-            <ul class="nav-group-items <?= $_openGroup==='users'?'open':'' ?>" id="navg-users">
-                <li><a href="<?= e($base) ?>/manage/users" class="<?= $_nav==='users'?'active':'' ?>">
-                    <span class="nav-icon">◉</span> All Users
-                </a></li>
-                <li><a href="<?= e($base) ?>/manage/profile" class="<?= $_nav==='profile'?'active':'' ?>">
-                    <span class="nav-icon">👤</span> My Profile
-                </a></li>
-            </ul>
-        </li>
-
-        <!-- Tools group -->
-        <li>
-            <div class="nav-group-toggle <?= $_openGroup==='tools'?'open':'' ?>" onclick="toggleNavGroup(this,'tools')">
-                <span class="nav-icon">⚙</span> Tools
-                <span class="nav-group-arrow">▶</span>
-            </div>
-            <ul class="nav-group-items <?= $_openGroup==='tools'?'open':'' ?>" id="navg-tools">
-                <li><a href="<?= e($base) ?>/manage/languages" class="<?= $_nav==='languages'?'active':'' ?>">
-                    <span class="nav-icon">🌐</span> Languages
-                </a></li>
-                <li><a href="<?= e($base) ?>/manage/plugins" class="<?= $_nav==='plugins'?'active':'' ?>">
-                    <span class="nav-icon">⬡</span> Plugins
-                </a></li>
-                <li><a href="<?= e($base) ?>/manage/settings" class="<?= $_nav==='settings'?'active':'' ?>">
-                    <span class="nav-icon">⚙</span> Settings
-                </a></li>
-                <?php if (isset($hooks) && $hooks instanceof \GoniCore\Core\Hooks\HookManager): ?>
-                <?php $hooks->doAction('manage.sidebar.nav', $base, $_nav); ?>
-                <?php endif ?>
-            </ul>
-        </li>
+        <?php
+        // Plugin sidebar items. The layout resolves the GLOBAL HookManager
+        // itself, so plugin nav appears on EVERY admin page even if the
+        // rendering controller didn't pass $hooks (keeps the sidebar identical
+        // site-wide).
+        $_navHooks = (isset($hooks) && $hooks instanceof \GoniCore\Core\Hooks\HookManager) ? $hooks : null;
+        if ($_navHooks === null) {
+            try { $_navHooks = \GoniCore\Core\Hooks\HookManager::global(); } catch (\Throwable) { $_navHooks = null; }
+        }
+        if ($_navHooks instanceof \GoniCore\Core\Hooks\HookManager) {
+            $_navHooks->emit('manage.sidebar.nav', $base, $_nav);
+        }
+        ?>
 
     </ul>
+    </div>
 
     <script>
-    function toggleNavGroup(toggle, groupId) {
-        var items = document.getElementById('navg-' + groupId);
-        var isOpen = toggle.classList.contains('open');
-
-        // Close all other groups (accordion behavior)
-        document.querySelectorAll('.nav-group-toggle.open').forEach(function(t) {
-            if (t !== toggle) {
-                t.classList.remove('open');
-                var id = t.getAttribute('onclick').match(/'([^']+)'\)/)?.[1];
-                if (id) {
-                    var el = document.getElementById('navg-' + id);
-                    if (el) el.classList.remove('open');
-                }
-            }
-        });
-        document.querySelectorAll('.nav-group-items.open').forEach(function(el) {
-            if (el !== items) el.classList.remove('open');
-        });
-
-        // Toggle current
-        toggle.classList.toggle('open', !isOpen);
-        if (items) items.classList.toggle('open', !isOpen);
+    function navToggle(el) {
+        var open = el.classList.toggle('open');
+        var ul = el.nextElementSibling;
+        if (ul) ul.classList.toggle('open', open);
     }
     </script>
 
@@ -721,7 +735,7 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
             <?php endif ?>
             <?= $topbarActions ?? '' ?>
             <?php if (!empty($user)): ?>
-            <a href="<?= e($base) ?>/" target="_blank" class="topbar-btn ghost" style="font-size:12px">↗ View Site</a>
+            <a href="<?= e($base) ?>/" target="_blank" class="topbar-btn ghost" style="font-size:12px"><span class="material-symbols-outlined mi-sm">open_in_new</span> <?= e(t('admin.view_site')) ?></a>
             <!-- Bell -->
             <div class="notif-wrap">
                 <button class="notif-btn" id="notifBtn" type="button">
@@ -732,10 +746,10 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
                 </button>
                 <div class="notif-dropdown" id="notifDropdown">
                     <div class="notif-header">
-                        <h4>Notifications <?php if (($notifUnread ?? 0) > 0): ?><span style="color:var(--muted);font-weight:400">(<?= (int)($notifUnread ?? 0) ?> unread)</span><?php endif ?></h4>
+                        <h4><?= e(t('notif.title')) ?> <?php if (($notifUnread ?? 0) > 0): ?><span style="color:var(--muted);font-weight:400">(<?= (int)($notifUnread ?? 0) ?> <?= e(t('notif.unread')) ?>)</span><?php endif ?></h4>
                         <?php if (($notifUnread ?? 0) > 0): ?>
                         <form method="POST" action="<?= e($base) ?>/manage/notifications/read-all">
-                            <button type="submit" class="notif-read-all">Mark all read</button>
+                            <button type="submit" class="notif-read-all"><?= e(t('notif.mark_all')) ?></button>
                         </form>
                         <?php endif ?>
                     </div>
@@ -762,7 +776,7 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
                         <?php else: ?>
                         <div class="notif-empty">
                             <div class="notif-empty-icon">🔔</div>
-                            <div>No notifications yet</div>
+                            <div><?= e(t('notif.empty')) ?></div>
                         </div>
                         <?php endif ?>
                     </div>
@@ -783,7 +797,7 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
                         <div class="topbar-profile-name"><?= e((string)($user['name'] ?? '')) ?></div>
                         <div class="topbar-profile-role"><?= e((string)($user['role'] ?? '')) ?></div>
                     </div>
-                    <span class="topbar-chevron">▼</span>
+                    <span class="topbar-chevron material-symbols-outlined" style="font-size:18px">expand_more</span>
                 </div>
 
                 <div class="profile-dropdown" id="profileDropdown">
@@ -791,24 +805,58 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
                         <div class="name"><?= e((string)($user['name'] ?? '')) ?></div>
                         <div class="email"><?= e((string)($user['email'] ?? '')) ?></div>
                     </div>
-                    <a href="<?= e($base) ?>/manage" class="profile-dropdown-item">◈ &nbsp;Dashboard</a>
-                    <a href="<?= e($base) ?>/manage/profile" class="profile-dropdown-item">👤 &nbsp;My Profile</a>
-                    <a href="<?= e($base) ?>/manage/users" class="profile-dropdown-item">◉ &nbsp;Users</a>
+                    <a href="<?= e($base) ?>/manage" class="profile-dropdown-item"><span class="material-symbols-outlined mi-sm">dashboard</span><?= e(t('nav.dashboard')) ?></a>
+                    <a href="<?= e($base) ?>/manage/profile" class="profile-dropdown-item"><span class="material-symbols-outlined mi-sm">person</span><?= e(t('nav.profile')) ?></a>
+                    <a href="<?= e($base) ?>/manage/users" class="profile-dropdown-item"><span class="material-symbols-outlined mi-sm">group</span><?= e(t('nav.users')) ?></a>
                     <div class="profile-dropdown-divider"></div>
-                    <a href="<?= e($base) ?>/logout" class="profile-dropdown-item danger">⏻ &nbsp;Sign out</a>
+                    <a href="<?= e($base) ?>/logout" class="profile-dropdown-item danger"><span class="material-symbols-outlined mi-sm">logout</span><?= e(t('admin.sign_out')) ?></a>
                 </div>
             </div>
             <?php endif ?>
         </div>
     </header>
     <div class="content">
+        <?php if (!empty($flashMsg)): ?>
+        <div id="gc-flash" data-msg="<?= e((string)$flashMsg) ?>" data-icon="<?= e((string)($flashIcon ?? 'success')) ?>" style="display:none"></div>
+        <?php endif ?>
         <?= $content ?>
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.8/sweetalert2.all.min.js"></script>
 <script>
+/* ── Offline page service worker ───────────────────── */
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('<?= e($base) ?>/sw.js').catch(function(){});
+}
+
+/* ── CSRF ──────────────────────────────────────────── */
+window.gcCsrf = <?= json_encode((string)($csrfToken ?? '')) ?>;
+
+/* Inject the token into every POST form on the page */
+(function () {
+    if (!window.gcCsrf) return;
+    document.querySelectorAll('form').forEach(function (f) {
+        if ((f.getAttribute('method') || 'GET').toUpperCase() !== 'POST') return;
+        if (f.querySelector('input[name="_csrf"]')) return;
+        var inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = '_csrf';
+        inp.value = window.gcCsrf;
+        f.appendChild(inp);
+    });
+})();
+
 /* ── GoniCore SweetAlert2 helpers ─────────────────── */
+
+/* Localized defaults injected from the active language file */
+window.gcI18n = {
+    confirmTitle: <?= json_encode(t('admin.are_you_sure'), JSON_UNESCAPED_UNICODE) ?>,
+    confirmText:  <?= json_encode(t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE) ?>,
+    confirm:      <?= json_encode(t('admin.confirm'), JSON_UNESCAPED_UNICODE) ?>,
+    cancel:       <?= json_encode(t('admin.cancel'), JSON_UNESCAPED_UNICODE) ?>,
+    yesDelete:    <?= json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE) ?>
+};
 
 /**
  * Confirm dialog before form submission.
@@ -816,12 +864,12 @@ $_userInitial = strtoupper(substr((string)($user['name'] ?? 'U'), 0, 1));
  */
 window.gcConfirm = function(btn, title, text, confirmText, confirmColor) {
     Swal.fire({
-        title:              title || 'Are you sure?',
-        text:               text  || '',
+        title:              title || gcI18n.confirmTitle,
+        text:               text  || gcI18n.confirmText,
         icon:               'warning',
         showCancelButton:   true,
-        confirmButtonText:  confirmText  || 'Confirm',
-        cancelButtonText:   'Cancel',
+        confirmButtonText:  confirmText  || gcI18n.confirm,
+        cancelButtonText:   gcI18n.cancel,
         confirmButtonColor: confirmColor || '#ef4444',
         cancelButtonColor:  '#94a3b8',
         reverseButtons:     true,

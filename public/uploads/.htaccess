@@ -1,0 +1,19 @@
+# Defense-in-depth: never execute scripts from an upload directory.
+Options -ExecCGI -Indexes
+php_flag engine off
+
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|pht|pl|py|cgi|sh|asp|aspx|jsp)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|pht|pl|py|cgi|sh|asp|aspx|jsp)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .pht
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .pht
+AddType text/plain .php .phtml .pht

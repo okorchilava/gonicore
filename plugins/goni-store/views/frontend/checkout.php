@@ -112,20 +112,31 @@ $symbol = $settings['currency_symbol'] ?? '$';
                 <div class="gs-section">
                     <h2>Payment Method</h2>
                     <div class="gs-payment-method">
-                        <label class="gs-payment-option">
-                            <input type="radio" name="payment_method" value="cod" checked>
+                        <?php
+                        $firstMethod = true;
+                        foreach ($paymentMethods ?? [] as $pmKey => $pm):
+                        ?>
+                        <label class="gs-payment-option" onclick="showPaymentExtra('<?= e($pmKey) ?>')">
+                            <input type="radio" name="payment_method" value="<?= e($pmKey) ?>"
+                                   <?= $firstMethod ? 'checked' : '' ?>>
                             <div>
-                                <div class="pm-label">💵 Cash on Delivery</div>
-                                <div class="pm-desc">Pay when you receive your order.</div>
+                                <div class="pm-label"><?= e($pm['icon'] ?? '') ?> <?= e($pm['label']) ?></div>
+                                <?php if (!empty($pm['desc'])): ?>
+                                <div class="pm-desc"><?= e($pm['desc']) ?></div>
+                                <?php endif ?>
                             </div>
                         </label>
-                        <label class="gs-payment-option">
-                            <input type="radio" name="payment_method" value="bank_transfer">
-                            <div>
-                                <div class="pm-label">🏦 Bank Transfer</div>
-                                <div class="pm-desc">Make a direct bank transfer. We'll send details after your order.</div>
-                            </div>
-                        </label>
+                        <?php
+                        // Payment plugins can inject extra fields per method
+                        if (function_exists('gc_emit')):
+                        ?>
+                        <div class="gs-payment-extra" id="pmextra-<?= e($pmKey) ?>"
+                             style="<?= $firstMethod ? '' : 'display:none' ?>;padding:0 4px">
+                            <?php gc_emit('store.payment.fields', $pmKey, $base ?? ''); ?>
+                        </div>
+                        <?php endif;
+                        $firstMethod = false;
+                        endforeach ?>
                     </div>
                 </div>
             </div>
@@ -184,3 +195,12 @@ $symbol = $settings['currency_symbol'] ?? '$';
         </div>
     </form>
 </div>
+<script>
+function showPaymentExtra(key) {
+    document.querySelectorAll('.gs-payment-extra').forEach(function(el) {
+        el.style.display = 'none';
+    });
+    var el = document.getElementById('pmextra-' + key);
+    if (el) el.style.display = '';
+}
+</script>

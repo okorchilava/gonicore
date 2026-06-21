@@ -57,10 +57,11 @@
     <?php else: ?>
     <div class="gs-product-grid">
         <?php foreach ($products as $p):
-            $imgs = json_decode((string)$p['images'],true) ?: [];
-            $thumb = $imgs[0] ?? '';
-            $onSale = !empty($p['sale_price']);
-            $price  = $onSale ? $p['sale_price'] : $p['price'];
+            $imgs    = json_decode((string)$p['images'],true) ?: [];
+            $thumb   = $imgs[0] ?? '';
+            $onSale  = $store->isOnSale($p);
+            $price   = $store->effectivePrice($p);
+            $discPct = $store->discountPercent($p);
         ?>
         <div class="gs-product-card">
             <div class="gs-product-thumb">
@@ -70,7 +71,7 @@
                 <div class="gs-product-thumb-placeholder">📦</div>
                 <?php endif ?>
                 <?php if ($onSale): ?>
-                <span class="gs-product-badge">Sale</span>
+                <span class="gs-product-badge">-<?= $discPct ?>%</span>
                 <?php endif ?>
                 <?php if (!empty($p['featured'])): ?>
                 <span class="gs-product-badge" style="left:auto;right:10px;background:#f59e0b">Featured</span>
@@ -80,9 +81,9 @@
                 <div class="gs-product-name"><a href="<?= e($base) ?>/shop/<?= e($p['slug']) ?>"><?= e($p['name']) ?></a></div>
                 <div class="gs-product-price">
                     <?php if ($onSale): ?>
-                    <span class="original"><?= number_format((float)$p['price'],2) ?></span>
+                    <span class="original"><?= $store->formatPrice((float)$p['price']) ?></span>
                     <?php endif ?>
-                    <?= e($settings['currency_symbol']??'$') ?><?= number_format((float)$price,2) ?>
+                    <?= $store->formatPrice($price) ?>
                 </div>
                 <form method="POST" action="<?= e($base) ?>/cart/add">
                     <input type="hidden" name="product_id" value="<?= (int)$p['id'] ?>">

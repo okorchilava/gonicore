@@ -65,7 +65,7 @@ foreach ($posts as $_p) {
     <?php else: ?>
 
     <div class="empty">
-      <div class="empty-icon">📂</div>
+      <div class="empty-icon"><span class="material-symbols-outlined" style="font-size:48px">folder_open</span></div>
       <h3><?= t('category.empty') ?></h3>
       <p><?= e($catRow['name']) ?></p>
     </div>

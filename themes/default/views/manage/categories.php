@@ -1,5 +1,5 @@
 <?php
-$pageTitle  = 'Categories';
+$pageTitle  = t('categories.title');
 $activeNav  = 'categories';
 $catList    = $cats ?? [];
 $topbarActions = '';
@@ -9,54 +9,41 @@ $catById = [];
 foreach ($catList as $c) { $catById[(int)$c['id']] = $c; }
 ?>
 
-<?php if (!empty($success ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($success) ?>" data-icon="success" style="display:none"></div>
-<?php endif ?>
-<?php if (!empty($error ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($error) ?>" data-icon="error" style="display:none"></div>
-<?php endif ?>
-
-<div style="display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start;max-width:1000px">
+<div style="display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start">
 
     <!-- Add category form -->
     <div class="card" style="position:sticky;top:80px">
-        <div class="card-header"><h3 id="formTitle">Add New Category</h3></div>
+        <div class="card-header"><h3 id="formTitle"><?= e(t('categories.new')) ?></h3></div>
         <div class="card-body" style="padding:18px">
             <form method="POST" id="catForm" action="<?= e($base) ?>/manage/categories/create">
                 <input type="hidden" name="_edit_id" id="editId" value="">
 
                 <div class="form-group">
-                    <label class="form-label">Name *</label>
+                    <label class="form-label"><?= e(t('categories.name')) ?> *</label>
                     <input type="text" name="name" id="catName" class="form-input"
-                           placeholder="e.g. Technology" required oninput="previewSlug(this.value)">
+                           required oninput="previewSlug(this.value)">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Slug (auto-generated)</label>
+                    <label class="form-label"><?= e(t('categories.slug')) ?></label>
                     <div id="slugPreview" style="font-family:monospace;font-size:12px;color:var(--muted);padding:4px 0"></div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Parent Category</label>
+                    <label class="form-label"><?= e(t('categories.parent')) ?></label>
                     <select name="parent_id" id="catParent" class="form-select">
-                        <option value="">— None (top level) —</option>
+                        <option value=""><?= e(t('categories.no_parent')) ?></option>
                         <?php foreach ($catList as $c): ?>
                         <option value="<?= (int)$c['id'] ?>"><?= e((string)$c['name']) ?></option>
                         <?php endforeach ?>
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="catDesc" class="form-input"
-                              style="min-height:60px;resize:vertical" placeholder="Optional"></textarea>
-                </div>
-
                 <div style="display:flex;gap:8px">
                     <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center">
-                        <span id="formBtnLabel">Add Category</span>
+                        <span id="formBtnLabel"><?= e(t('categories.new')) ?></span>
                     </button>
-                    <button type="button" class="btn btn-ghost" id="cancelEdit" style="display:none" onclick="resetForm()">Cancel</button>
+                    <button type="button" class="btn btn-ghost" id="cancelEdit" style="display:none" onclick="resetForm()"><?= e(t('admin.cancel')) ?></button>
                 </div>
             </form>
         </div>
@@ -65,27 +52,26 @@ foreach ($catList as $c) { $catById[(int)$c['id']] = $c; }
     <!-- Category list -->
     <div class="card">
         <div class="card-header">
-            <h3><?= count($catList) ?> Categories</h3>
-            <input type="text" id="catSearch" placeholder="Search…"
+            <h3><?= count($catList) ?> <?= e(t('categories.title')) ?></h3>
+            <input type="text" id="catSearch" placeholder="<?= e(t('admin.search')) ?>…"
                    style="padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;width:190px"
                    oninput="filterCats()">
         </div>
         <?php if (empty($catList)): ?>
         <div class="empty" style="padding:40px">
-            <div class="empty-icon">📂</div>
-            <h3>No categories yet</h3>
-            <p>Add your first category using the form on the left.</p>
+            <div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">folder</span></div>
+            <h3><?= e(t('categories.no_categories')) ?></h3>
         </div>
         <?php else: ?>
         <div class="table-wrap">
             <table id="catsTable">
                 <thead>
                     <tr>
-                        <th style="width:40%">Name</th>
-                        <th>Slug</th>
-                        <th>Parent</th>
-                        <th style="text-align:center">Posts</th>
-                        <th style="text-align:right">Actions</th>
+                        <th style="width:40%"><?= e(t('categories.name')) ?></th>
+                        <th><?= e(t('categories.slug')) ?></th>
+                        <th><?= e(t('categories.parent')) ?></th>
+                        <th style="text-align:center"><?= e(t('categories.posts_count')) ?></th>
+                        <th style="text-align:right"><?= e(t('admin.actions')) ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -111,10 +97,10 @@ foreach ($catList as $c) { $catById[(int)$c['id']] = $c; }
                         </td>
                         <td style="text-align:right;white-space:nowrap">
                             <button type="button" class="btn btn-ghost" style="font-size:11px;padding:3px 10px;margin-right:4px"
-                                onclick="editCat(<?= (int)$c['id'] ?>, <?= htmlspecialchars(json_encode($c), ENT_QUOTES) ?>)">Edit</button>
+                                onclick="editCat(<?= (int)$c['id'] ?>, <?= htmlspecialchars(json_encode($c), ENT_QUOTES) ?>)"><?= e(t('admin.edit')) ?></button>
                             <form method="POST" action="<?= e($base) ?>/manage/categories/<?= (int)$c['id'] ?>/delete" style="display:inline">
                                 <button type="button" class="btn btn-danger" style="font-size:11px;padding:3px 10px"
-                                    onclick="gcConfirm(this,'Delete category?','Posts in this category will become uncategorized.','Delete')">Delete</button>
+                                    onclick="gcConfirm(this, <?= e(json_encode(t('categories.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode('«' . $c['name'] . '» — ' . t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)"><?= e(t('admin.delete')) ?></button>
                             </form>
                         </td>
                     </tr>
@@ -134,14 +120,19 @@ function previewSlug(v) {
     document.getElementById('slugPreview').textContent = slugify(v) || '—';
 }
 
+var catI18n = {
+    editTitle: <?= json_encode(t('categories.title') . ' — ' . t('admin.edit'), JSON_UNESCAPED_UNICODE) ?>,
+    saveLabel: <?= json_encode(t('admin.save'), JSON_UNESCAPED_UNICODE) ?>,
+    addTitle:  <?= json_encode(t('categories.new'), JSON_UNESCAPED_UNICODE) ?>
+};
+
 function editCat(id, data) {
-    document.getElementById('formTitle').textContent   = 'Edit Category';
-    document.getElementById('formBtnLabel').textContent = 'Save Changes';
+    document.getElementById('formTitle').textContent   = catI18n.editTitle;
+    document.getElementById('formBtnLabel').textContent = catI18n.saveLabel;
     document.getElementById('cancelEdit').style.display = '';
     document.getElementById('editId').value            = id;
     document.getElementById('catForm').action          = '<?= e($base) ?>/manage/categories/' + id + '/update';
     document.getElementById('catName').value           = data.name   || '';
-    document.getElementById('catDesc').value           = data.description || '';
     document.getElementById('slugPreview').textContent = data.slug   || '';
     var sel = document.getElementById('catParent');
     sel.value = data.parent_id || '';
@@ -149,8 +140,8 @@ function editCat(id, data) {
 }
 
 function resetForm() {
-    document.getElementById('formTitle').textContent    = 'Add New Category';
-    document.getElementById('formBtnLabel').textContent  = 'Add Category';
+    document.getElementById('formTitle').textContent    = catI18n.addTitle;
+    document.getElementById('formBtnLabel').textContent  = catI18n.addTitle;
     document.getElementById('cancelEdit').style.display = 'none';
     document.getElementById('editId').value             = '';
     document.getElementById('catForm').action           = '<?= e($base) ?>/manage/categories/create';

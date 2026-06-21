@@ -18,6 +18,7 @@ use GoniCore\Core\Database\Connection;
 use GoniCore\Core\Database\QueryBuilder;
 use GoniCore\Modules\Category\CategoryRepository;
 use GoniCore\Modules\Login\LoginService;
+use GoniCore\Modules\Login\SessionManager;
 use GoniCore\Modules\Theme\ThemeController;
 
 // ── Autoloader ────────────────────────────────────────────────────────────────
@@ -35,8 +36,8 @@ spl_autoload_register(function (string $class) use ($pluginDir): void {
 try {
     $conn = $container->get(Connection::class);
     // Check if builder columns exist; if not, run migration
-    $cols = $conn->query("SHOW COLUMNS FROM `posts` LIKE 'builder_data'");
-    if (empty($cols)) {
+    $cols = $conn->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'posts' AND COLUMN_NAME = 'builder_data'");
+    if ((int)($cols[0]['cnt'] ?? 0) === 0) {
         $migFile = $pluginDir . '/database/migration.php';
         if (is_file($migFile)) {
             $migration = require $migFile;
@@ -61,6 +62,7 @@ $container->bind(
         $c->get(QueryBuilder::class),
         $c->get(LoginService::class),
         $c->get(CategoryRepository::class),
+        $c->get(SessionManager::class),
     ),
 );
 
@@ -72,28 +74,50 @@ $router->group('/goni-builder', static function ($router) use ($container): void
     $router->get('/{id}/preview',  [GoniBuilderController::class, 'preview']);
 });
 
-// ── Override ThemeController page() — builder template rendering ───────────────
+// ── Front-end rendering ───────────────────────────────────────────────────────
+// The core stays plugin-agnostic: it calls gc_apply('page.render', null, $post,
+// $request) for every page and uses whatever Response a plugin returns. We opt
+// in here only for pages that use the "builder" template and have builder data.
 
-$hooks->addFilter('page.template.builder', static function (array $post, string $base) use ($container): string {
+gc_filter('page.render', static function ($carry, array $post, $request) use ($container, $pluginDir): mixed {
+    if ($carry instanceof \GoniCore\Core\Http\Response) return $carry;              // already handled
+    if (($post['template'] ?? '') !== 'builder' || empty($post['builder_data'])) return $carry;
+
+    $root = dirname($pluginDir, 2); // …/GoniCore
+    require_once $root . '/themes/default/views/helpers.php';
+
     /** @var BuilderService $bs */
-    $bs = $container->get(BuilderService::class);
-    return $bs->render((string) ($post['builder_data'] ?? ''), $base);
+    $bs       = $container->get(BuilderService::class);
+    $settings = $container->get(\GoniCore\Modules\Settings\SettingsService::class);
+    $langSvc  = $container->get(\GoniCore\Modules\Language\LanguageService::class);
+    $langSvc->boot($request);
+
+    $base        = $request->basePath();
+    $siteName    = (string) ($settings->siteName() ?: 'GoniCore');
+    $siteTagline = $settings->siteTagline();
+    $categories  = $container->get(\GoniCore\Modules\Category\CategoryRepository::class)->findAll();
+    $lang        = $langSvc->currentCode();
+    $languages   = $langSvc->activeLanguages();
+    $langService = $langSvc;
+
+    // Globals the theme partials + BuilderService read.
+    global $widgetServiceInstance, $menuServiceInstance, $shortcodeManagerInstance;
+    $widgetServiceInstance    = $container->get(\GoniCore\Modules\Widget\WidgetService::class);
+    $menuServiceInstance      = $container->get(\GoniCore\Modules\Menu\MenuService::class);
+    $shortcodeManagerInstance = $container->get(\GoniCore\Core\Shortcodes\ShortcodeManager::class);
+
+    $builderHtml = $bs->render((string) $post['builder_data'], $base);
+
+    ob_start();
+    include $pluginDir . '/views/page_builder.php';
+    return \GoniCore\Core\Http\Response::html((string) ob_get_clean());
 }, 10);
 
 // ── Inject "Goni Builder" button into page editor topbar ──────────────────────
 
-$hooks->addAction('manage.page_form.topbar', static function (array $post, string $base): void {
+gc_on('manage.page_form.topbar', static function (array $post, string $base): void {
     if (empty($post['id'])) return;
     echo '<a href="' . htmlspecialchars($base . '/goni-builder/' . (int)$post['id'], ENT_QUOTES)
         . '" class="topbar-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">'
-        . '🎨 Goni Builder</a>';
+        . '<span class="material-symbols-outlined mi-sm">brush</span> Goni Builder</a>';
 }, 10);
-
-// ── Make BuilderService available to ThemeController ──────────────────────────
-
-// ThemeController uses a global to render builder pages; we provide it here.
-$hooks->addAction('theme.init', static function () use ($container): void {
-    $GLOBALS['goni_builder_service'] = $container->get(BuilderService::class);
-}, 10);
-
-$hooks->doAction('theme.init');

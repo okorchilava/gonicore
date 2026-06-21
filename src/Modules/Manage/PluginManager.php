@@ -4,13 +4,23 @@ declare(strict_types=1);
 
 namespace GoniCore\Modules\Manage;
 
+use GoniCore\Core\Database\Connection;
+
 /**
  * Reads plugin metadata and handles plugin upload/delete in the manage panel.
+ *
+ * Lifecycle:
+ *  - activate()  removes the .disabled marker AND runs the plugin's
+ *    database/migration.php up() so its tables exist before next boot.
+ *  - deactivate() only writes the .disabled marker — data is kept.
+ *  - delete()    runs migration down() (drops the plugin's tables/data)
+ *    and then removes the plugin directory. Irreversible.
  */
 final class PluginManager
 {
     public function __construct(
         private readonly string $pluginsDir,
+        private readonly Connection $connection,
     ) {}
 
     // ── Discovery ─────────────────────────────────────────────────────────────
@@ -80,14 +90,42 @@ final class PluginManager
 
     public function activate(string $slug): void
     {
-        $f = $this->pluginsDir . '/' . $slug . '/.disabled';
+        $slug = $this->sanitizeSlug($slug);
+        $dir  = $this->pluginsDir . '/' . $slug;
+        if (!is_dir($dir)) {
+            throw new \RuntimeException("Plugin \"{$slug}\" not found.");
+        }
+
+        // Create the plugin's tables before it boots on the next request.
+        $this->runMigration($slug, 'up');
+
+        $f = $dir . '/.disabled';
         if (file_exists($f)) @unlink($f);
     }
 
     public function deactivate(string $slug): void
     {
-        $dir = $this->pluginsDir . '/' . $slug;
+        $slug = $this->sanitizeSlug($slug);
+        $dir  = $this->pluginsDir . '/' . $slug;
         if (is_dir($dir)) touch($dir . '/.disabled');
+    }
+
+    // ── Migrations ────────────────────────────────────────────────────────────
+
+    /**
+     * Run the plugin's database/migration.php in the given direction.
+     * Convention: the file returns an object with up(Connection) / down(Connection).
+     * Missing file or method is fine — not every plugin has tables.
+     */
+    private function runMigration(string $slug, string $direction): void
+    {
+        $file = $this->pluginsDir . '/' . $slug . '/database/migration.php';
+        if (!is_file($file)) return;
+
+        $migration = require $file;
+        if (!is_object($migration) || !method_exists($migration, $direction)) return;
+
+        $migration->{$direction}($this->connection);
     }
 
     // ── Upload ────────────────────────────────────────────────────────────────
@@ -107,13 +145,20 @@ final class PluginManager
             throw new \RuntimeException('Could not open ZIP file.');
         }
 
-        // Determine plugin slug from the first directory in the ZIP
+        // Determine plugin slug from the first directory in the ZIP and
+        // reject any entry that could escape the plugins directory.
         $slug = '';
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $name = $zip->getNameIndex($i);
             if ($name === false) continue;
-            $parts = explode('/', $name, 2);
-            if (!empty($parts[0])) { $slug = $parts[0]; break; }
+            if (str_contains($name, '..') || str_starts_with($name, '/') || preg_match('/^[a-z]:/i', $name)) {
+                $zip->close();
+                throw new \RuntimeException('ZIP contains unsafe paths.');
+            }
+            if ($slug === '') {
+                $parts = explode('/', $name, 2);
+                if (!empty($parts[0])) $slug = $parts[0];
+            }
         }
 
         if (!$slug) {
@@ -121,22 +166,56 @@ final class PluginManager
             throw new \RuntimeException('Could not determine plugin slug from ZIP.');
         }
 
-        $slug = preg_replace('/[^a-z0-9\-_]/i', '', $slug);
-        $dest = $this->pluginsDir . '/' . $slug;
+        $clean = (string) preg_replace('/[^a-z0-9\-_]/i', '', $slug);
+        if ($clean === '' || $clean !== $slug) {
+            $zip->close();
+            throw new \RuntimeException('Plugin folder name contains invalid characters.');
+        }
 
         $zip->extractTo($this->pluginsDir);
         $zip->close();
 
-        return $slug;
+        // New plugins arrive deactivated: the admin reviews and activates
+        // explicitly, which also runs the plugin's migration.
+        $dest = $this->pluginsDir . '/' . $clean;
+        if (is_dir($dest) && !file_exists($dest . '/.disabled')) {
+            touch($dest . '/.disabled');
+        }
+
+        return $clean;
     }
 
     // ── Delete ────────────────────────────────────────────────────────────────
 
+    /**
+     * Uninstall: drop the plugin's database tables, then remove its files.
+     * The manage UI must show a data-loss warning before calling this.
+     */
     public function delete(string $slug): void
     {
-        $dir = $this->pluginsDir . '/' . $slug;
+        $slug = $this->sanitizeSlug($slug);
+        $dir  = $this->pluginsDir . '/' . $slug;
         if (!is_dir($dir)) return;
+
+        // Drop plugin data first while migration file still exists.
+        try {
+            $this->runMigration($slug, 'down');
+        } catch (\Throwable $e) {
+            // File removal still proceeds; log so the orphaned tables are traceable.
+            error_log("[GoniCore] Plugin \"{$slug}\" down() migration failed: " . $e->getMessage());
+        }
+
         $this->rmrf($dir);
+    }
+
+    private function sanitizeSlug(string $slug): string
+    {
+        // Strip path traversal — slugs are plain directory names.
+        $clean = (string) preg_replace('/[^a-z0-9\-_]/i', '', $slug);
+        if ($clean === '' || $clean !== $slug) {
+            throw new \RuntimeException('Invalid plugin slug.');
+        }
+        return $clean;
     }
 
     private function rmrf(string $path): void

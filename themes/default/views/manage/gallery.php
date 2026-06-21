@@ -1,11 +1,11 @@
 <?php
-$pageTitle = 'Media Gallery';
+$pageTitle = t('gallery.title');
 $activeNav = 'gallery';
 $mediaItems = $media ?? [];
 $totalSize  = array_sum(array_column($mediaItems, 'size'));
 
 ob_start(); ?>
-<label for="galleryUploadInput" class="topbar-btn" style="cursor:pointer">⬆ Upload Files</label>
+<label for="galleryUploadInput" class="topbar-btn" style="cursor:pointer"><span class="material-symbols-outlined mi-sm">upload</span> <?= e(t('gallery.upload')) ?></label>
 <?php $topbarActions = ob_get_clean(); ?>
 
 <!-- Upload form -->
@@ -14,13 +14,6 @@ ob_start(); ?>
     <input type="file" id="galleryUploadInput" name="files[]" multiple accept="image/*,video/*,audio/*,application/pdf"
            onchange="document.getElementById('galleryUploadForm').submit()">
 </form>
-
-<?php if (!empty($uploadSuccess ?? null)): ?>
-<div id="gc-flash" data-msg="<?= (int)$uploadSuccess ?> file(s) uploaded." data-icon="success" style="display:none"></div>
-<?php endif ?>
-<?php if (!empty($uploadError ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($uploadError) ?>" data-icon="error" style="display:none"></div>
-<?php endif ?>
 
 <style>
 .gallery-stats{display:flex;gap:20px;margin-bottom:18px}
@@ -53,7 +46,7 @@ ob_start(); ?>
 
 <!-- Drop zone -->
 <div class="gal-drop-zone" id="galDropZone" onclick="document.getElementById('galleryUploadInput').click()">
-    <div style="font-size:36px;margin-bottom:8px">📁</div>
+    <div style="margin-bottom:8px"><span class="material-symbols-outlined" style="font-size:36px">cloud_upload</span></div>
     <h3>Drop files here or click to upload</h3>
     <p>Images, PDF, video, audio — max 20 MB each</p>
 </div>
@@ -78,9 +71,8 @@ ob_start(); ?>
 <div class="gal-grid" id="galGrid">
 <?php if (empty($mediaItems)): ?>
 <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">
-    <div style="font-size:40px;margin-bottom:12px">🖼</div>
-    <h3 style="font-size:15px;color:var(--text)">No media yet</h3>
-    <p style="font-size:13px;margin-top:6px">Upload files using the button above.</p>
+    <div style="margin-bottom:12px"><span class="material-symbols-outlined" style="font-size:40px">image</span></div>
+    <h3 style="font-size:15px;color:var(--text)"><?= e(t('gallery.no_media')) ?></h3>
 </div>
 <?php endif ?>
 <?php foreach ($mediaItems as $m):
@@ -89,17 +81,18 @@ ob_start(); ?>
     $sizeStr = $m['size'] > 1048576
         ? round($m['size']/1048576, 1) . ' MB'
         : round($m['size']/1024, 0) . ' KB';
-    $mimeIcons = ['video/'=>'🎬','audio/'=>'🎵','application/pdf'=>'📕','text/'=>'📄'];
-    $icon = '📄';
+    $mimeIcons = ['video/'=>'movie','audio/'=>'music_note','application/pdf'=>'picture_as_pdf','text/'=>'description'];
+    $icon = 'draft';
     foreach ($mimeIcons as $k => $v) { if (str_starts_with($m['mime_type'], $k)) { $icon = $v; break; } }
 ?>
 <div class="gal-item" data-name="<?= e(strtolower($m['original_name'])) ?>" data-type="<?= e($m['mime_type']) ?>">
     <div class="gal-thumb">
         <?php if ($isImg): ?>
         <img src="<?= $url ?>" loading="lazy" alt="<?= e($m['original_name']) ?>"
-             onerror="this.outerHTML='<div class=\'gal-mime\'><?= $icon ?></div>'">
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="gal-mime" style="display:none"><span class="material-symbols-outlined" style="font-size:28px"><?= $icon ?></span></div>
         <?php else: ?>
-        <div class="gal-mime"><?= $icon ?></div>
+        <div class="gal-mime"><span class="material-symbols-outlined" style="font-size:28px"><?= $icon ?></span></div>
         <?php endif ?>
     </div>
     <div class="gal-info">
@@ -109,10 +102,10 @@ ob_start(); ?>
     <div class="gal-actions">
         <a href="<?= $url ?>" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:3px 8px;flex:1;justify-content:center">View</a>
         <button type="button" class="btn btn-ghost" style="font-size:11px;padding:3px 8px"
-            onclick="copyUrl('<?= $url ?>')" title="Copy URL">📋</button>
+            onclick="copyUrl('<?= $url ?>')" title="Copy URL"><span class="material-symbols-outlined mi-sm">content_copy</span></button>
         <form method="POST" action="<?= e($base) ?>/manage/gallery/<?= (int)$m['id'] ?>/delete" style="display:inline">
             <button type="button" class="btn btn-danger" style="font-size:11px;padding:3px 8px"
-                onclick="gcConfirm(this,'Delete file?','This cannot be undone.','Delete')">✕</button>
+                onclick="gcConfirm(this, <?= e(json_encode(t('gallery.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)">✕</button>
         </form>
     </div>
 </div>
@@ -154,6 +147,7 @@ function copyUrl(url) {
         if (!files.length) return;
         var fd = new FormData();
         for (var i = 0; i < files.length; i++) fd.append('files[]', files[i]);
+        fd.append('_csrf', window.gcCsrf || '');
         zone.innerHTML = '<div style="font-size:24px;margin-bottom:8px">⏳</div><h3>Uploading ' + files.length + ' file(s)…</h3>';
         fetch('<?= e($base) ?>/manage/gallery/upload', {method:'POST',body:fd})
             .then(function(){ location.reload(); })

@@ -63,13 +63,6 @@ foreach ($enKeys as $key => $enValue) {
 .lf-progress strong{color:var(--accent)}
 </style>
 
-<?php if ($success): ?>
-<div class="alert alert-success" style="margin-bottom:16px">✓ <?= e((string)$success) ?></div>
-<?php endif ?>
-<?php if ($error): ?>
-<div class="alert alert-danger" style="margin-bottom:16px">⚠ <?= e((string)$error) ?></div>
-<?php endif ?>
-
 <!-- Header info -->
 <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
   <div style="font-size:36px"><?= e((string)($lang['flag'] ?? '🌐')) ?></div>
@@ -108,7 +101,7 @@ foreach ($enKeys as $key => $enValue) {
 
   <?php foreach ($grouped as $cat => $rows): ?>
   <div class="lf-cat-head">
-    <span style="font-size:14px">📂</span> <?= e(ucfirst($cat)) ?>
+    <span class="material-symbols-outlined mi-sm">folder</span> <?= e(ucfirst($cat)) ?>
     <span style="font-weight:400;margin-left:auto"><?= count($rows) ?> key<?= count($rows) !== 1 ? 's' : '' ?></span>
   </div>
   <div class="lf-grid">
@@ -144,8 +137,8 @@ foreach ($enKeys as $key => $enValue) {
       &nbsp;·&nbsp; <span id="js-pct"><?= $pct ?></span>% complete
     </div>
     <div style="display:flex;gap:10px">
-      <button type="button" class="btn btn-ghost" onclick="fillFromEnglish()">⚡ Copy English defaults</button>
-      <button type="submit" class="btn btn-primary" style="padding:9px 24px">💾 Save translations</button>
+      <button type="button" class="btn btn-ghost" onclick="fillFromEnglish()"><span class="material-symbols-outlined mi-sm">bolt</span> Copy English defaults</button>
+      <button type="submit" class="btn btn-primary" style="padding:9px 24px"><span class="material-symbols-outlined mi-sm">save</span> Save translations</button>
     </div>
   </div>
 

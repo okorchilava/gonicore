@@ -86,6 +86,7 @@ a{text-decoration:none}
 /* ── Canvas ────────────────────────────────────────────────── */
 #gb-canvas-wrap{
   flex:1;background:#e2e8f0;overflow:auto;display:flex;justify-content:center;
+  align-items:flex-start;       /* let the canvas grow with its content (not stretch to wrap height) */
   padding:20px;transition:background .2s;
 }
 #gb-canvas{
@@ -164,7 +165,8 @@ a{text-decoration:none}
 }
 #gb-right-title{font-size:13px;font-weight:700;color:var(--text)}
 #gb-right-body{flex:1;overflow-y:auto;padding:14px}
-#gb-right-body::-webkit-scrollbar{width:4px}.#gb-right-body::-webkit-scrollbar-thumb{background:#e2e8f0}
+#gb-right-body::-webkit-scrollbar{width:4px}
+#gb-right-body::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px}
 
 /* Settings fields */
 .gb-field{margin-bottom:14px}
@@ -330,6 +332,7 @@ a{text-decoration:none}
 var GB = {
   pageId:      <?= $pageId ?>,
   base:        '<?= e($base) ?>',
+  csrf:        <?= json_encode((string)($csrfToken ?? '')) ?>,
   schemas:     <?= $schemasJson ?>,
   state:       null,
   selected:    null,   // { type:'element'|'section'|'column', sectionId, colId, elId }
@@ -338,6 +341,35 @@ var GB = {
   saveTimer:   null,
   dirty:       false,
 };
+
+// HTML-escape a value before injecting into innerHTML / attributes.
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// SweetAlert2 toast (bottom-right, auto-dismiss)
+function gbToast(message, icon, duration) {
+  Swal.fire({
+    toast: true, position: 'bottom-end',
+    icon: icon || 'success', title: message,
+    showConfirmButton: false, timer: duration || 2500,
+    timerProgressBar: true, customClass: { popup: 'gc-swal-popup' },
+  });
+}
+
+// SweetAlert2 confirm — resolves true when confirmed
+function gbConfirm(title, text) {
+  return Swal.fire({
+    title: title, text: text || '',
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
+    confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8',
+    reverseButtons: true, focusCancel: true,
+    customClass: { popup: 'gc-swal-popup' },
+  }).then(function(r){ return r.isConfirmed; });
+}
 
 // ── Init ────────────────────────────────────────────────────────────────────
 (function init() {
@@ -362,7 +394,6 @@ function gbRender() {
   var root = document.getElementById('gb-sections-root');
   root.innerHTML = '';
   var sections = GB.state.sections;
-  if (!sections.length) { return; }
 
   sections.forEach(function(section, si) {
     root.appendChild(buildSectionEl(section, si));
@@ -446,7 +477,7 @@ function buildColumnEl(sectionId, col) {
     wrap.appendChild(buildElementEl(sectionId, col.id, el));
   });
 
-  // Drop zone
+  // Drop zone — accepts new elements from the panel AND moves of existing ones
   var addZone = document.createElement('div');
   addZone.className = 'gb-add-el-zone';
   addZone.innerHTML = '+ Add Element';
@@ -454,10 +485,13 @@ function buildColumnEl(sectionId, col) {
   addZone.addEventListener('dragover', function(e){ e.preventDefault(); addZone.classList.add('drag-over'); });
   addZone.addEventListener('dragleave', function(){ addZone.classList.remove('drag-over'); });
   addZone.addEventListener('drop', function(e){
-    e.preventDefault(); addZone.classList.remove('drag-over');
+    e.preventDefault(); e.stopPropagation(); addZone.classList.remove('drag-over');
     if (GB.dragType === 'element') {
       gbAddElementToColDrop(sectionId, col.id, GB.dragData);
+    } else if (GB.dragType === 'move-element') {
+      gbMoveElementTo(GB.dragData, sectionId, col.id, null);
     }
+    GB.dragType = null; GB.dragData = null;
   });
   wrap.appendChild(addZone);
 
@@ -499,50 +533,96 @@ function buildElementEl(sectionId, colId, el) {
     gbSelectElement(sectionId, colId, el.id);
   });
   wrap.addEventListener('dragstart', function(e){
+    e.stopPropagation();
     gbDragStart(e, 'move-element', { sectionId:sectionId, colId:colId, elId:el.id });
+  });
+  // Dropping ON an element inserts before it (new or moved element)
+  wrap.addEventListener('dragover', function(e){
+    if (!GB.dragType) return;
+    e.preventDefault(); e.stopPropagation();
+    wrap.style.boxShadow = '0 -3px 0 0 var(--accent)';
+  });
+  wrap.addEventListener('dragleave', function(){ wrap.style.boxShadow = ''; });
+  wrap.addEventListener('drop', function(e){
+    e.preventDefault(); e.stopPropagation();
+    wrap.style.boxShadow = '';
+    if (GB.dragType === 'element') {
+      gbAddElementToColDrop(sectionId, colId, GB.dragData, el.id);
+    } else if (GB.dragType === 'move-element') {
+      gbMoveElementTo(GB.dragData, sectionId, colId, el.id);
+    }
+    GB.dragType = null; GB.dragData = null;
   });
   return wrap;
 }
 
-// Simple preview in canvas
+// Move an existing element to another column / position.
+// beforeElId === null appends to the end of the target column.
+function gbMoveElementTo(src, targetSectionId, targetColId, beforeElId) {
+  if (!src || src.elId === beforeElId) return;
+  var fromCol = findColumn(src.sectionId, src.colId);
+  var toCol   = findColumn(targetSectionId, targetColId);
+  if (!fromCol || !toCol) return;
+
+  var i = fromCol.elements.findIndex(function(e){ return e.id === src.elId; });
+  if (i === -1) return;
+  var moved = fromCol.elements.splice(i, 1)[0];
+
+  if (beforeElId) {
+    var j = toCol.elements.findIndex(function(e){ return e.id === beforeElId; });
+    if (j === -1) toCol.elements.push(moved);
+    else toCol.elements.splice(j, 0, moved);
+  } else {
+    toCol.elements.push(moved);
+  }
+
+  GB.selected = { type:'element', sectionId:targetSectionId, colId:targetColId, elId:moved.id };
+  markDirty(); gbRender();
+}
+
+// Simple preview in canvas — all user values pass through esc()
 function gbPreviewElement(el) {
   var s = el.settings || {};
   switch(el.type) {
     case 'heading':
-      var tag = s.tag || 'h2';
-      var css = 'text-align:' + (s.align||'left') + ';' + (s.color?'color:'+s.color+';':'') + (s.size?'font-size:'+s.size+';':'');
-      return '<' + tag + ' style="' + css + 'margin:0">' + (s.text||'Heading') + '</' + tag + '>';
+      var tag = /^h[1-6]$/.test(s.tag||'') ? s.tag : 'h2';
+      var css = 'text-align:' + esc(s.align||'left') + ';' + (s.color?'color:'+esc(s.color)+';':'') + (s.size?'font-size:'+esc(s.size)+';':'');
+      return '<' + tag + ' style="' + css + 'margin:0">' + esc(s.text||'Heading') + '</' + tag + '>';
     case 'text':
-      return '<div style="text-align:' + (s.align||'left') + ';color:' + (s.color||'inherit') + ';font-size:' + (s.size||'inherit') + '">' + (s.content||'Text').replace(/\n/g,'<br>') + '</div>';
+      return '<div style="text-align:' + esc(s.align||'left') + ';color:' + esc(s.color||'inherit') + ';font-size:' + esc(s.size||'inherit') + '">' + esc(s.content||'Text').replace(/\n/g,'<br>') + '</div>';
     case 'image':
       if (!s.src) return '<div style="background:#f1f5f9;height:80px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px">🖼 Image</div>';
-      return '<div style="text-align:' + (s.align||'center') + '"><img src="' + s.src + '" style="max-width:' + (s.width||'100%') + ';border-radius:' + (s.radius||'0') + ';max-height:200px;object-fit:cover"></div>';
+      return '<div style="text-align:' + esc(s.align||'center') + '"><img src="' + esc(s.src) + '" style="max-width:' + esc(s.width||'100%') + ';border-radius:' + esc(s.radius||'0') + ';max-height:200px;object-fit:cover"></div>';
     case 'button':
       var bColors = s.style==='outline'?'background:transparent;border:2px solid #10B27C;color:#10B27C':s.style==='danger'?'background:#ef4444;color:#fff;border:none':'background:#10B27C;color:#fff;border:none';
-      return '<div style="text-align:' + (s.align||'left') + '"><span style="' + bColors + ';padding:8px 20px;border-radius:' + (s.radius||'8px') + ';display:inline-block;font-weight:600;font-size:14px">' + (s.text||'Button') + '</span></div>';
+      return '<div style="text-align:' + esc(s.align||'left') + '"><span style="' + bColors + ';padding:8px 20px;border-radius:' + esc(s.radius||'8px') + ';display:inline-block;font-weight:600;font-size:14px">' + esc(s.text||'Button') + '</span></div>';
     case 'spacer':
-      return '<div style="height:' + (s.height||'40px') + ';background:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px">↕ ' + (s.height||'40px') + '</div>';
+      return '<div style="height:' + esc(s.height||'40px') + ';background:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px">↕ ' + esc(s.height||'40px') + '</div>';
     case 'divider':
-      return '<hr style="border:none;border-top:' + (s.thickness||'1px') + ' solid ' + (s.color||'#e2e8f0') + ';width:' + (s.width||'100%') + '">';
+      return '<hr style="border:none;border-top:' + esc(s.thickness||'1px') + ' solid ' + esc(s.color||'#e2e8f0') + ';width:' + esc(s.width||'100%') + '">';
     case 'video':
       return '<div style="background:#0f172a;height:100px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px">▶</div>';
     case 'html':
-      return '<div style="background:#f8fafc;padding:8px;border-radius:4px;font-size:11.5px;font-family:monospace;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (s.code||'HTML').replace(/</g,'&lt;') + '</div>';
+      return '<div style="background:#f8fafc;padding:8px;border-radius:4px;font-size:11.5px;font-family:monospace;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(s.code||'HTML') + '</div>';
     case 'icon_box':
-      return '<div style="text-align:' + (s.align||'left') + '"><div style="font-size:' + (s.icon_size||'28px') + '">' + (s.icon||'⚡') + '</div><strong style="font-size:14px">' + (s.title||'Icon Box') + '</strong></div>';
+      return '<div style="text-align:' + esc(s.align||'left') + '"><div style="font-size:' + esc(s.icon_size||'28px') + '">' + esc(s.icon||'⚡') + '</div><strong style="font-size:14px">' + esc(s.title||'Icon Box') + '</strong></div>';
     case 'counter':
-      return '<div style="text-align:' + (s.align||'center') + '"><div style="font-size:36px;font-weight:900;color:' + (s.color||'#10B27C') + '">' + (s.number||'0') + (s.suffix||'') + '</div><div style="font-size:12px;color:#64748b">' + (s.label||'') + '</div></div>';
+      return '<div style="text-align:' + esc(s.align||'center') + '"><div style="font-size:36px;font-weight:900;color:' + esc(s.color||'#10B27C') + '">' + esc(s.number||'0') + esc(s.suffix||'') + '</div><div style="font-size:12px;color:#64748b">' + esc(s.label||'') + '</div></div>';
     case 'alert':
       var ac = s.style==='success'?'#dcfce7':s.style==='warning'?'#fef9c3':s.style==='danger'?'#fee2e2':'#dbeafe';
-      return '<div style="background:' + ac + ';padding:10px 12px;border-radius:6px;font-size:13px">' + (s.icon||'ℹ') + ' ' + (s.text||'Alert') + '</div>';
+      return '<div style="background:' + ac + ';padding:10px 12px;border-radius:6px;font-size:13px">' + esc(s.icon||'ℹ') + ' ' + esc(s.text||'Alert') + '</div>';
     case 'gallery':
       return '<div style="background:#f1f5f9;padding:12px;border-radius:6px;text-align:center;color:#64748b;font-size:12px">🖼 Gallery (' + ((s.images||'').split('\n').filter(function(l){return l.trim()}).length) + ' images)</div>';
     case 'posts_grid':
-      return '<div style="background:#f1f5f9;padding:12px;border-radius:6px;text-align:center;color:#64748b;font-size:12px">⊟ Posts Grid (' + (s.count||3) + ' posts)</div>';
+      return '<div style="background:#f1f5f9;padding:12px;border-radius:6px;text-align:center;color:#64748b;font-size:12px">⊟ Posts Grid (' + esc(s.count||3) + ' posts)</div>';
     case 'slider':
-      return '<div style="background:linear-gradient(135deg,#1e293b,#334155);padding:24px;border-radius:8px;text-align:center;color:#94a3b8;font-size:13px"><div style="font-size:28px;margin-bottom:6px">🎞</div>Parallax Slider' + (s.slider_id ? ' #'+s.slider_id : ' (set ID)') + '</div>';
+      return '<div style="background:linear-gradient(135deg,#1e293b,#334155);padding:24px;border-radius:8px;text-align:center;color:#94a3b8;font-size:13px"><div style="font-size:28px;margin-bottom:6px">🎞</div>Parallax Slider' + (s.slider_id ? ' #'+esc(s.slider_id) : ' (set ID)') + '</div>';
+    case 'ad_zone':
+      return '<div style="background:#fef3c7;border:2px dashed #f59e0b;padding:16px;border-radius:8px;text-align:center;color:#92400e;font-size:12.5px"><div style="font-size:24px;margin-bottom:4px">📢</div><strong>Ad Zone</strong>' + (s.slug ? ': <code style="background:#fde68a;padding:2px 6px;border-radius:4px">' + esc(s.slug) + '</code>' : ' <span style="opacity:.6">(zone not set)</span>') + '</div>';
+    case 'gccounter':
+      return '<div style="background:#eef2ff;border:2px dashed #a5b4fc;padding:16px;border-radius:8px;text-align:center;color:#4338ca;font-size:12.5px"><div style="font-size:24px;margin-bottom:4px">🔢</div><strong>GC Counter</strong>' + (s.group_id ? ' <span style="background:#c7d2fe;padding:2px 8px;border-radius:4px;font-size:11px">group #' + esc(s.group_id) + '</span>' : ' <span style="opacity:.6">(group not set)</span>') + '</div>';
     default:
-      return '<div style="padding:8px;color:#64748b;font-size:12px">' + el.type + '</div>';
+      return '<div style="padding:8px;color:#64748b;font-size:12px">' + esc(el.type) + '</div>';
   }
 }
 
@@ -609,7 +689,7 @@ function buildElementPicker() {
   return html;
 }
 function getElIcon(type) {
-  var icons = {heading:'H',text:'T',image:'🖼',button:'⬡',spacer:'↕',divider:'─',video:'▶',gallery:'⊞',icon_box:'⚡',counter:'123',alert:'!',html:'</>',posts_grid:'⊟',slider:'🎞'};
+  var icons = {heading:'H',text:'T',image:'🖼',button:'⬡',spacer:'↕',divider:'─',video:'▶',gallery:'⊞',icon_box:'⚡',counter:'123',alert:'!',html:'</>',posts_grid:'⊟',slider:'🎞',ad_zone:'📢',gccounter:'🔢'};
   return icons[type] || '?';
 }
 function gbPickElement(type) {
@@ -636,14 +716,19 @@ function gbAddElementClick(type) {
     }, 50);
   }
 }
-function gbAddElementToColDrop(sId, cId, type) {
+function gbAddElementToColDrop(sId, cId, type, beforeElId) {
   var col = findColumn(sId, cId);
   if (!col) return;
   var schema = GB.schemas[type];
   var settings = {};
   if (schema) schema.fields.forEach(function(f){ settings[f.name] = f.default; });
   var el = { id:gbId('el'), type:type, settings:settings };
-  col.elements.push(el);
+  if (beforeElId) {
+    var j = col.elements.findIndex(function(e){ return e.id === beforeElId; });
+    if (j === -1) col.elements.push(el); else col.elements.splice(j, 0, el);
+  } else {
+    col.elements.push(el);
+  }
   markDirty();
   gbRender();
   gbSelectElement(sId, cId, el.id);
@@ -658,10 +743,12 @@ function gbMoveSection(sId, dir) {
   markDirty(); gbRender();
 }
 function gbDeleteSection(sId) {
-  if (!confirm('Delete this section and all its content?')) return;
-  GB.state.sections = GB.state.sections.filter(function(s){ return s.id!==sId; });
-  if (GB.selected && GB.selected.sectionId===sId) GB.selected = null;
-  markDirty(); gbRender(); gbDeselect();
+  gbConfirm('Delete section?', 'The section and all its content will be removed.').then(function(ok){
+    if (!ok) return;
+    GB.state.sections = GB.state.sections.filter(function(s){ return s.id!==sId; });
+    if (GB.selected && GB.selected.sectionId===sId) GB.selected = null;
+    markDirty(); gbRender(); gbDeselect();
+  });
 }
 function gbDuplicateSection(sId) {
   var src = findSection(sId);
@@ -682,11 +769,14 @@ function gbMoveEl(sId, cId, eId, dir) {
   markDirty(); gbRender();
 }
 function gbDeleteEl(sId, cId, eId) {
-  var col = findColumn(sId, cId);
-  if (!col) return;
-  col.elements = col.elements.filter(function(e){ return e.id!==eId; });
-  if (GB.selected && GB.selected.elId===eId) GB.selected = null;
-  markDirty(); gbRender(); gbDeselect();
+  gbConfirm('Delete element?').then(function(ok){
+    if (!ok) return;
+    var col = findColumn(sId, cId);
+    if (!col) return;
+    col.elements = col.elements.filter(function(e){ return e.id!==eId; });
+    if (GB.selected && GB.selected.elId===eId) GB.selected = null;
+    markDirty(); gbRender(); gbDeselect();
+  });
 }
 function gbDuplicateEl(sId, cId, eId) {
   var col = findColumn(sId, cId);
@@ -729,8 +819,21 @@ function showColumnSettings(sId, cId) {
   var st = col.settings || {};
   document.getElementById('gb-right-title').textContent = 'Column';
   document.getElementById('gb-right-body').innerHTML =
+    field('Width (%)', 'text', 'col_width', col.width || 100) +
     field('Custom Padding', 'text', 'col_padding', st.padding||'') +
-    '<p style="font-size:11.5px;color:var(--muted);margin-top:4px">Column width is set by section structure.</p>';
+    '<p style="font-size:11.5px;color:var(--muted);margin-top:4px">Width is a percentage of the section (1–100). Sibling columns are not adjusted automatically.</p>';
+
+  var wEl = document.getElementById('col_width');
+  var pEl = document.getElementById('col_padding');
+  function apply() {
+    var w = parseInt(wEl.value, 10);
+    if (!isNaN(w)) col.width = Math.max(1, Math.min(100, w));
+    col.settings = col.settings || {};
+    col.settings.padding = pEl.value;
+    markDirty(); gbRender();
+  }
+  wEl.addEventListener('change', apply);
+  pEl.addEventListener('change', apply);
 }
 
 function showElementSettings(sId, cId, el) {
@@ -741,17 +844,19 @@ function showElementSettings(sId, cId, el) {
   schema.fields.forEach(function(f) {
     var val = el.settings[f.name] !== undefined ? el.settings[f.name] : f.default;
     if (f.type === 'toggle') {
-      html += '<div class="gb-field"><label>' + f.label + '</label>' + toggleField('el_' + el.id + '_' + f.name, val === '1' || val === true) + '</div>';
+      html += '<div class="gb-field"><label>' + esc(f.label) + '</label>' + toggleField('el_' + el.id + '_' + f.name, val === '1' || val === true) + '</div>';
     } else if (f.type === 'image') {
-      html += '<div class="gb-field"><label>' + f.label + '</label>' +
+      html += '<div class="gb-field"><label>' + esc(f.label) + '</label>' +
         '<div class="gb-img-picker" onclick="gbOpenImgPicker(\'el_' + el.id + '_' + f.name + '\')">' +
-        (val ? '<img src="' + val + '">' : '<div class="gb-img-picker-empty">🖼 Click to select image</div>') +
-        '</div><input type="hidden" id="el_' + el.id + '_' + f.name + '" value="' + val + '"></div>';
+        (val ? '<img src="' + esc(val) + '">' : '<div class="gb-img-picker-empty">🖼 Click to select image</div>') +
+        '</div>' +
+        (val ? '<button type="button" onclick="gbClearImg(\'el_' + el.id + '_' + f.name + '\')" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11.5px;color:var(--muted);cursor:pointer;font-family:inherit">✕ Remove image</button>' : '') +
+        '<input type="hidden" id="el_' + el.id + '_' + f.name + '" value="' + esc(val) + '"></div>';
     } else if (f.type === 'select') {
-      var opts = Object.entries(f.options||{}).map(function(e){ return '<option value="' + e[0] + '"' + (val==e[0]?' selected':'') + '>' + e[1] + '</option>'; }).join('');
-      html += '<div class="gb-field"><label>' + f.label + '</label><select id="el_' + el.id + '_' + f.name + '">' + opts + '</select></div>';
+      var opts = Object.entries(f.options||{}).map(function(e){ return '<option value="' + esc(e[0]) + '"' + (val==e[0]?' selected':'') + '>' + esc(e[1]) + '</option>'; }).join('');
+      html += '<div class="gb-field"><label>' + esc(f.label) + '</label><select id="el_' + el.id + '_' + f.name + '">' + opts + '</select></div>';
     } else if (f.type === 'code' || f.type === 'textarea') {
-      html += '<div class="gb-field"><label>' + f.label + '</label><textarea id="el_' + el.id + '_' + f.name + '" rows="4">' + val + '</textarea></div>';
+      html += '<div class="gb-field"><label>' + esc(f.label) + '</label><textarea id="el_' + el.id + '_' + f.name + '" rows="4">' + esc(val) + '</textarea></div>';
     } else {
       html += field(f.label, f.type === 'color' ? 'color' : 'text', 'el_' + el.id + '_' + f.name, val);
     }
@@ -920,16 +1025,21 @@ function gbSave() {
 
   fetch(GB.base + '/goni-builder/' + GB.pageId + '/save', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ use_builder: 1, builder_data: GB.state })
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': GB.csrf },
+    body: JSON.stringify({ use_builder: 1, builder_data: GB.state, _csrf: GB.csrf })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){ return r.json().catch(function(){ return { ok: r.ok }; }); })
   .then(function(data) {
-    GB.dirty = false;
     if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }
-    statusEl.textContent = 'Saved ✓';
-    statusEl.style.color = '#10B27C';
-    setTimeout(function(){ statusEl.textContent=''; }, 3000);
+    if (data && data.ok) {
+      GB.dirty = false;
+      statusEl.textContent = 'Saved ✓';
+      statusEl.style.color = '#10B27C';
+      setTimeout(function(){ statusEl.textContent=''; }, 3000);
+    } else {
+      statusEl.textContent = data && data.error === 'csrf' ? 'Session expired — reload' : 'Save failed!';
+      statusEl.style.color = '#ef4444';
+    }
   })
   .catch(function() {
     if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }

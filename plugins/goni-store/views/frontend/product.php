@@ -6,8 +6,10 @@
 $imgs    = json_decode((string)($product['images'] ?? ''), true) ?: [];
 $thumb   = $imgs[0] ?? '';
 $attrs   = json_decode((string)($product['attributes'] ?? ''), true) ?: [];
-$onSale  = !empty($product['sale_price']);
-$price   = $onSale ? (float)$product['sale_price'] : (float)$product['price'];
+$onSale  = $store->isOnSale($product);
+$price   = $store->effectivePrice($product);
+$discPct = $store->discountPercent($product);
+$savings = $onSale ? (float)$product['price'] - $price : 0;
 $symbol  = $settings['currency_symbol'] ?? '$';
 $inStock = (int)($product['stock_qty'] ?? 0);
 $manage  = !empty($product['manage_stock']);
@@ -98,13 +100,18 @@ $manage  = !empty($product['manage_stock']);
 
             <div class="gs-price-block">
                 <?php if ($onSale): ?>
-                <span class="gs-price-old"><?= $symbol ?><?= number_format((float)$product['price'],2) ?></span>
+                <span class="gs-price-old"><?= $store->formatPrice((float)$product['price']) ?></span>
                 <?php endif ?>
-                <span class="gs-price-now"><?= $symbol ?><?= number_format($price,2) ?></span>
+                <span class="gs-price-now"><?= $store->formatPrice($price) ?></span>
                 <?php if ($onSale): ?>
-                <span class="gs-sale-badge">SALE</span>
+                <span class="gs-sale-badge">-<?= $discPct ?>%</span>
                 <?php endif ?>
             </div>
+            <?php if ($onSale): ?>
+            <div style="font-size:13px;color:#16a34a;font-weight:600;margin-top:4px">
+                You save <?= $store->formatPrice($savings) ?>!
+            </div>
+            <?php endif ?>
 
             <?php if ($manage): ?>
             <div class="gs-stock <?= $inStock>0?'in':'out' ?>">
@@ -177,7 +184,8 @@ $manage  = !empty($product['manage_stock']);
             <?php foreach ($related as $r):
                 $rImgs  = json_decode((string)($r['images']??''), true) ?: [];
                 $rThumb = $rImgs[0] ?? '';
-                $rPrice = !empty($r['sale_price']) ? $r['sale_price'] : $r['price'];
+                $rOnSale = $store->isOnSale($r);
+                $rPrice  = $store->effectivePrice($r);
             ?>
             <div class="gs-related-card">
                 <div class="gs-related-thumb">

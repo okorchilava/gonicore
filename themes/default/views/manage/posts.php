@@ -1,16 +1,16 @@
 <?php
-$pageTitle = 'Posts';
+$pageTitle = t('posts.title');
 $activeNav = 'posts';
 ob_start(); ?>
-<a href="<?= e($base) ?>/manage/posts/new" class="topbar-btn">+ New Post</a>
+<a href="<?= e($base) ?>/manage/posts/new" class="topbar-btn">+ <?= e(t('posts.new')) ?></a>
 <?php $topbarActions = ob_get_clean(); ?>
 
 <!-- Filters -->
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap">
-    <?php foreach (['' => 'All', 'published' => 'Published', 'draft' => 'Drafts', 'archived' => 'Archived'] as $val => $label): ?>
+    <?php foreach (['' => t('admin.all'), 'published' => t('posts.published'), 'draft' => t('posts.draft'), 'archived' => t('posts.archived')] as $val => $label): ?>
     <a href="?status=<?= e($val) ?>" class="btn btn-ghost"
        style="<?= ($status ?? '') === $val ? 'background:var(--accent);color:#fff;border-color:var(--accent)' : '' ?>">
-        <?= $label ?>
+        <?= e($label) ?>
         <?php if ($val === ''): ?><span style="opacity:.6;font-size:11px;margin-left:2px"><?= (int)($total ?? 0) ?></span><?php endif ?>
     </a>
     <?php endforeach ?>
@@ -22,11 +22,11 @@ ob_start(); ?>
         <table>
             <thead>
                 <tr>
-                    <th style="width:46%">Title</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th style="text-align:right">Actions</th>
+                    <th style="width:46%"><?= e(t('posts.post_title')) ?></th>
+                    <th><?= e(t('posts.category')) ?></th>
+                    <th><?= e(t('admin.status')) ?></th>
+                    <th><?= e(t('posts.date')) ?></th>
+                    <th style="text-align:right"><?= e(t('admin.actions')) ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -39,7 +39,7 @@ ob_start(); ?>
                                  style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0"
                                  onerror="this.style.display='none'">
                             <?php else: ?>
-                            <div style="width:40px;height:40px;border-radius:6px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;color:var(--muted)">✦</div>
+                            <div style="width:40px;height:40px;border-radius:6px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)"><span class="material-symbols-outlined mi-sm">article</span></div>
                             <?php endif ?>
                             <div style="min-width:0">
                                 <a href="<?= e($base) ?>/manage/posts/<?= (int)$p['id'] ?>"
@@ -60,11 +60,11 @@ ob_start(); ?>
                         <a href="<?= e($base) ?>/post/<?= e($p['slug']) ?>" target="_blank"
                            class="btn btn-ghost" style="padding:4px 8px;font-size:12px;margin-right:4px" title="View">↗</a>
                         <a href="<?= e($base) ?>/manage/posts/<?= (int)$p['id'] ?>"
-                           class="btn btn-ghost" style="padding:4px 10px;font-size:12px;margin-right:4px">Edit</a>
+                           class="btn btn-ghost" style="padding:4px 10px;font-size:12px;margin-right:4px"><?= e(t('admin.edit')) ?></a>
                         <form method="POST" action="<?= e($base) ?>/manage/posts/<?= (int)$p['id'] ?>/delete" style="display:inline">
                             <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:12px"
-                                onclick="gcConfirm(this,'Delete post?','&quot;<?= e(addslashes($p['title'])) ?>&quot; will be permanently deleted.','Delete')">
-                                Delete
+                                onclick="gcConfirm(this, <?= e(json_encode(t('posts.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode('«' . $p['title'] . '» — ' . t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)">
+                                <?= e(t('admin.delete')) ?>
                             </button>
                         </form>
                     </td>
@@ -100,10 +100,10 @@ ob_start(); ?>
 
     <?php else: ?>
     <div class="empty">
-        <div class="empty-icon">✦</div>
-        <h3>No posts found</h3>
-        <p style="margin-bottom:20px">Create your first post to get started.</p>
-        <a href="<?= e($base) ?>/manage/posts/new" class="btn btn-primary">+ New Post</a>
+        <div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">article</span></div>
+        <h3><?= e(t('posts.no_posts')) ?></h3>
+        <p style="margin-bottom:20px"><?= e(t('posts.create_first')) ?></p>
+        <a href="<?= e($base) ?>/manage/posts/new" class="btn btn-primary">+ <?= e(t('posts.new')) ?></a>
     </div>
     <?php endif ?>
 </div>

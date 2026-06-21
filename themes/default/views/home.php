@@ -99,7 +99,7 @@
     <?php else: ?>
 
     <div class="empty">
-      <div class="empty-icon">✍️</div>
+      <div class="empty-icon"><span class="material-symbols-outlined" style="font-size:48px">edit_note</span></div>
       <h3><?= t('posts.no_posts') ?></h3>
       <p><?= t('posts.no_posts_sub') ?></p>
     </div>

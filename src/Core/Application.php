@@ -10,6 +10,7 @@ use GoniCore\Core\Http\HttpException;
 use GoniCore\Core\Http\Request;
 use GoniCore\Core\Http\Response;
 use GoniCore\Core\Http\Router;
+use GoniCore\Core\Logging\ErrorLogger;
 use GoniCore\Modules\Theme\ThemeController;
 use Throwable;
 
@@ -63,6 +64,15 @@ final class Application
                 }
             }
 
+            // Record genuine problems (405/403/422/5xx). 404 is skipped — it's
+            // routine bot/typo noise that would flood the log.
+            if ($e->getStatusCode() !== 404) {
+                $this->logger()?->log(
+                    $e->getStatusCode() >= 500 ? 'error' : 'warning',
+                    'HTTP ' . $e->getStatusCode() . ': ' . $e->getMessage(),
+                );
+            }
+
             return Response::error(
                 $e->getMessage(),
                 $e->getStatusCode(),
@@ -70,6 +80,16 @@ final class Application
             );
         } catch (Throwable $e) {
             return $this->handleUnexpected($e);
+        }
+    }
+
+    /** Resolve the file error logger, if available. */
+    private function logger(): ?ErrorLogger
+    {
+        try {
+            return $this->container->get(ErrorLogger::class);
+        } catch (Throwable) {
+            return ErrorLogger::instance();
         }
     }
 
@@ -122,7 +142,9 @@ final class Application
             );
         }
 
-        // In production, log the real error and return a generic 500.
+        // In production, log the real error (file log + PHP error_log) and
+        // return a generic 500.
+        $this->logger()?->logThrowable($e);
         error_log(sprintf(
             '[GoniCore] Uncaught %s: %s in %s on line %d',
             $e::class,

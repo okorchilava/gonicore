@@ -1,14 +1,14 @@
 <?php
 $isEdit    = !empty($post);
-$pageTitle = $isEdit ? 'Edit Page' : 'New Page';
+$pageTitle = $isEdit ? t('pages.edit') : t('pages.new');
 $activeNav = 'pages';
 ob_start(); ?>
-<a href="<?= e($base) ?>/manage/pages" class="topbar-btn ghost">← Pages</a>
+<a href="<?= e($base) ?>/manage/pages" class="topbar-btn ghost">← <?= e(t('pages.title')) ?></a>
 <?php if ($isEdit): ?>
 <?php
 // Plugins can inject buttons here via manage.page_form.topbar hook
 if (isset($hooks) && $hooks instanceof \GoniCore\Core\Hooks\HookManager) {
-    $hooks->doAction('manage.page_form.topbar', $post ?? [], $base);
+    $hooks->emit('manage.page_form.topbar', $post ?? [], $base);
 }
 ?>
 <a href="<?= e($base) ?>/page/<?= e($post['slug'] ?? '') ?>" target="_blank" class="topbar-btn ghost" style="margin-left:4px">↗ View</a>
@@ -21,7 +21,7 @@ $formAction = $isEdit
 ?>
 
 <style>
-.page-editor-wrap { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; max-width: 1100px; }
+.page-editor-wrap { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
 .slug-preview { font-size: 12px; color: var(--muted); margin-top: 5px; word-break: break-all; }
 .slug-preview span { color: var(--accent); }
 @media (max-width: 860px) { .page-editor-wrap { grid-template-columns: 1fr; } }
@@ -36,7 +36,7 @@ $formAction = $isEdit
         <div style="margin-bottom:14px">
             <input type="text" name="title" id="pageTitle" class="form-input"
                    value="<?= e((string)($post['title'] ?? '')) ?>"
-                   placeholder="Page title"
+                   placeholder="<?= e(t('posts.post_title')) ?>"
                    style="font-size:22px;font-weight:700;padding:14px 16px;border-radius:10px"
                    oninput="autoSlug(this.value)" required>
         </div>
@@ -52,8 +52,8 @@ $formAction = $isEdit
                 <?php if ($isEdit && !empty($post['slug'])): ?>
                 <button type="button" id="slugEditBtn" title="Edit slug"
                         onclick="enableSlugEdit()"
-                        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
-                    ✏️ Edit
+                        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:4px">
+                    <span class="material-symbols-outlined mi-sm">edit</span> <?= e(t('admin.edit')) ?>
                 </button>
                 <?php endif ?>
             </div>
@@ -76,24 +76,24 @@ $formAction = $isEdit
     <div style="display:flex;flex-direction:column;gap:14px">
 
         <div class="card">
-            <div class="card-header"><h3>Publish</h3></div>
+            <div class="card-header"><h3><?= e(t('admin.status')) ?></h3></div>
             <div class="card-body" style="padding:16px">
                 <div style="margin-bottom:14px">
-                    <label class="form-label" style="margin-bottom:8px">Status</label>
-                    <?php foreach (['draft'=>['Draft','#f59e0b'],'published'=>['Published','#10b981'],'archived'=>['Archived','#94a3b8']] as $val => [$label, $color]): ?>
+                    <label class="form-label" style="margin-bottom:8px"><?= e(t('admin.status')) ?></label>
+                    <?php foreach (['draft'=>[t('posts.draft'),'#f59e0b'],'published'=>[t('posts.published'),'#10b981'],'archived'=>[t('posts.archived'),'#94a3b8']] as $val => [$label, $color]): ?>
                     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:13.5px">
                         <input type="radio" name="status" value="<?= $val ?>"
                                <?= (($post['status'] ?? 'draft') === $val) ? 'checked' : '' ?>
                                style="accent-color:<?= $color ?>">
                         <span style="display:flex;align-items:center;gap:5px">
                             <span style="width:8px;height:8px;border-radius:50%;background:<?= $color ?>;display:inline-block"></span>
-                            <?= $label ?>
+                            <?= e($label) ?>
                         </span>
                     </label>
                     <?php endforeach ?>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;padding:10px;font-size:14px;justify-content:center">
-                    <?= $isEdit ? 'Save Changes' : 'Create Page' ?>
+                    <?= $isEdit ? e(t('admin.save')) : e(t('admin.create')) ?>
                 </button>
                 <?php if ($isEdit): ?>
                 <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted)">
@@ -104,7 +104,7 @@ $formAction = $isEdit
         </div>
 
         <div class="card">
-            <div class="card-header"><h3>Template</h3></div>
+            <div class="card-header"><h3><?= e(t('pages.template')) ?></h3></div>
             <div class="card-body" style="padding:16px">
                 <select name="template" id="tplSelect" class="form-select">
                     <?php foreach ($templates ?? [] as $tpl): ?>
@@ -121,7 +121,7 @@ $formAction = $isEdit
         <!-- Featured Image -->
         <div class="card">
             <div class="card-header">
-                <h3>Featured Image</h3>
+                <h3><?= e(t('posts.featured_image')) ?></h3>
                 <?php if (!empty($post['featured_image'])): ?>
                 <button type="button" class="btn btn-ghost" style="font-size:11px;padding:2px 8px"
                     onclick="document.getElementById('pageFeaturedUrl').value='';document.getElementById('pageFeaturedPreview').style.display='none'">Remove</button>
@@ -137,16 +137,16 @@ $formAction = $isEdit
                 </div>
                 <button type="button" class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12.5px"
                     onclick="gcEd.openGallery('__page_featured__','<?= e($base) ?>')">
-                    🖼 <?= empty($post['featured_image']) ? 'Set Featured Image' : 'Change Image' ?>
+                    <span class="material-symbols-outlined mi-sm">image</span> <?= empty($post['featured_image']) ? e(t('posts.featured_image')) : 'Change Image' ?>
                 </button>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header"><h3>Parent</h3></div>
+            <div class="card-header"><h3><?= e(t('pages.parent')) ?></h3></div>
             <div class="card-body" style="padding:16px">
                 <select name="parent_id" class="form-select">
-                    <option value="">No parent</option>
+                    <option value=""><?= e(t('categories.no_parent')) ?></option>
                     <?php foreach ($allPages ?? [] as $pg):
                         if ($isEdit && (int)$pg['id'] === (int)($post['id'] ?? 0)) continue;
                     ?>

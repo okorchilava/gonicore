@@ -72,6 +72,18 @@ final class SettingsService
         return (string) $this->get('site_tagline', '');
     }
 
+    /** Relative media path of the site logo, or '' if none. Render as {base}/storage/media/{path}. */
+    public function siteLogo(): string
+    {
+        return (string) $this->get('site_logo', '');
+    }
+
+    /** Relative media path of the favicon, or '' if none. Render as {base}/storage/media/{path}. */
+    public function siteFavicon(): string
+    {
+        return (string) $this->get('site_favicon', '');
+    }
+
     public function postsPerPage(): int
     {
         return (int) $this->get('posts_per_page', 9);

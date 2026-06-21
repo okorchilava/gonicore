@@ -68,9 +68,15 @@ $config->loadFile(__DIR__ . '/../config/auth.php',     'auth');
 // ============================================================
 
 $container = new Container();
+Container::setGlobalInstance($container);
 
 // Config
 $container->instance(Config::class, $config);
+
+// ---- Error logging (file-based → storage/logs, viewable in the manage panel) ----
+$errorLogger = new \GoniCore\Core\Logging\ErrorLogger(__DIR__ . '/../storage/logs');
+$errorLogger->register();
+$container->instance(\GoniCore\Core\Logging\ErrorLogger::class, $errorLogger);
 
 // ---- Infrastructure ----
 
@@ -192,6 +198,13 @@ $container->bind(
         new MenuService($c->get(QueryBuilder::class)),
 );
 
+// ---- Mail ----
+
+$container->singleton(
+    MailService::class,
+    static fn(Container $c): MailService => new MailService($c->get(SettingsService::class)),
+);
+
 // ---- Controllers ----
 
 $container->bind(
@@ -232,6 +245,9 @@ $container->bind(
         $c->get(SessionManager::class),
         $c->get(CategoryRepository::class),
         $c->get(HookManager::class),
+        $c->get(UserRepository::class),
+        $c->get(MailService::class),
+        $c->get(LanguageService::class),
     ),
 );
 
@@ -315,7 +331,7 @@ $container->singleton(
 $container->singleton(
     PluginManager::class,
     static fn(Container $c): PluginManager =>
-        new PluginManager(__DIR__ . '/../plugins'),
+        new PluginManager(__DIR__ . '/../plugins', $c->get(Connection::class)),
 );
 
 $container->bind(
@@ -340,6 +356,7 @@ $container->bind(
         $c->get(MenuService::class),
         $c->get(HookManager::class),
         $c->get(QueryBuilder::class),
+        $c->get(SessionManager::class),
     ),
 );
 
@@ -352,6 +369,7 @@ $container->bind(
         $c->get(LoginService::class),
         $c->get(NotificationService::class),
         $c->get(UserRepository::class),
+        $c->get(SessionManager::class),
     ),
 );
 
@@ -397,6 +415,7 @@ $router->group('/manage', static function (Router $r): void {
     $r->get('/posts',                    [ManageController::class, 'postsList']);
     $r->get('/posts/new',                [ManageController::class, 'postNew']);
     $r->post('/posts/new',               [ManageController::class, 'postCreate']);
+    $r->post('/posts',                   [ManageController::class, 'postCreate']); // form posts here for a new post
     $r->get('/posts/{id}',               [ManageController::class, 'postEdit']);
     $r->post('/posts/{id}',              [ManageController::class, 'postUpdate']);
     $r->post('/posts/{id}/delete',       [ManageController::class, 'postDelete']);
@@ -405,6 +424,7 @@ $router->group('/manage', static function (Router $r): void {
     $r->get('/pages',                    [ManageController::class, 'pagesList']);
     $r->get('/pages/new',                [ManageController::class, 'pageNew']);
     $r->post('/pages/new',               [ManageController::class, 'pageCreate']);
+    $r->post('/pages',                   [ManageController::class, 'pageCreate']); // form posts here for a new page
     $r->get('/pages/{id}',               [ManageController::class, 'pageEdit']);
     $r->post('/pages/{id}',              [ManageController::class, 'pageUpdate']);
     $r->post('/pages/{id}/delete',       [ManageController::class, 'pageDelete']);
@@ -414,20 +434,30 @@ $router->group('/manage', static function (Router $r): void {
     $r->get('/users/new',                [ManageController::class, 'userNew']);
     $r->post('/users/new',               [ManageController::class, 'userCreate']);
     $r->get('/users/{id}',               [ManageController::class, 'userEdit']);
+    $r->get('/users/{id}/edit',          [ManageController::class, 'userEdit']);
     $r->post('/users/{id}',              [ManageController::class, 'userUpdate']);
+    $r->post('/users/{id}/edit',         [ManageController::class, 'userUpdate']);
     $r->post('/users/{id}/delete',       [ManageController::class, 'userDelete']);
 
     // Categories
     $r->get('/categories',               [ManageController::class, 'categoriesList']);
     $r->post('/categories',              [ManageController::class, 'categoryCreate']);
+    $r->post('/categories/create',       [ManageController::class, 'categoryCreate']);
+    $r->post('/categories/{id}/update',  [ManageController::class, 'categoryUpdate']);
     $r->post('/categories/{id}',         [ManageController::class, 'categoryUpdate']);
     $r->post('/categories/{id}/delete',  [ManageController::class, 'categoryDelete']);
 
     // Menus
-    $r->get('/menus',                    [ManageController::class, 'menusList']);
-    $r->post('/menus',                   [ManageController::class, 'menuCreate']);
-    $r->post('/menus/{id}/delete',       [ManageController::class, 'menuDelete']);
-    $r->post('/menus/{id}/rename',       [ManageController::class, 'menuRename']);
+    $r->get('/menus',                            [ManageController::class, 'menusList']);
+    $r->post('/menus',                           [ManageController::class, 'menuCreate']);
+    $r->post('/menus/create',                    [ManageController::class, 'menuCreate']);
+    $r->post('/menus/assign-locations',          [ManageController::class, 'menuAssignLocations']);
+    $r->post('/menus/items/reorder',             [ManageController::class, 'menuItemReorder']);
+    $r->post('/menus/items/{item_id}/update',     [ManageController::class, 'menuItemUpdate']);
+    $r->post('/menus/items/{item_id}/delete',    [ManageController::class, 'menuItemDelete']);
+    $r->post('/menus/{id}/items/add',            [ManageController::class, 'menuItemAdd']);
+    $r->post('/menus/{id}/delete',               [ManageController::class, 'menuDelete']);
+    $r->post('/menus/{id}/rename',               [ManageController::class, 'menuRename']);
 
     // Languages
     $r->get('/languages',                [LanguageController::class, 'index']);
@@ -470,9 +500,14 @@ $router->group('/manage', static function (Router $r): void {
     $r->get('/settings',                 [ManageController::class, 'settingsForm']);
     $r->post('/settings',                [ManageController::class, 'settingsSave']);
 
+    // Logs (error log viewer)
+    $r->get('/logs',                     [ManageController::class, 'logsList']);
+    $r->post('/logs/clear',              [ManageController::class, 'logsClear']);
+
     // Profile
-    $r->get('/profile',                  [ManageController::class, 'profileForm']);
-    $r->post('/profile',                 [ManageController::class, 'profileSave']);
+    $r->get('/profile',                      [ManageController::class, 'profileForm']);
+    $r->post('/profile',                     [ManageController::class, 'profileSave']);
+    $r->post('/profile/notifications',       [ManageController::class, 'profileNotifications']);
 
     // Notifications
     $r->post('/notifications/{id}/read', [ManageController::class, 'notificationRead']);
@@ -509,6 +544,10 @@ $router->group('/api/v1', static function (Router $r) use ($container): void {
 $hooks     = $container->get(HookManager::class);
 $pluginDir = __DIR__ . '/../plugins';
 
+// Register global HookManager instance + load global plugin API functions
+HookManager::setGlobalInstance($hooks);
+require_once __DIR__ . '/../src/Core/functions.php';
+
 /** @var PluginLoader $pluginLoader */
 $pluginLoader = new PluginLoader();
 $pluginLoader->load($pluginDir, $router, $container, $hooks);
@@ -516,16 +555,10 @@ $pluginLoader->load($pluginDir, $router, $container, $hooks);
 // Boot language detection for front-end requests
 $langService = $container->get(LanguageService::class);
 
-// ── Mail service ─────────────────────────────────────────────────────────────
-$container->singleton(
-    MailService::class,
-    static fn(Container $c): MailService => new MailService($c->get(SettingsService::class)),
-);
-
-// Hook: admin.notify — any code / plugin calls this to send admin email
-// Usage: $hooks->doAction('admin.notify', 'Subject', '<p>HTML body</p>')
-// Extended: $hooks->doAction('admin.notify', 'Subject', '<p>HTML</p>', $ctaUrl, $ctaText)
-$hooks->addAction('admin.notify', static function (
+// Core listener: admin.notify — plugins/core call gc_emit('admin.notify', ...) to send admin email
+// Usage: gc_emit('admin.notify', 'Subject', '<p>HTML body</p>')
+// Extended: gc_emit('admin.notify', 'Subject', '<p>HTML</p>', $ctaUrl, $ctaText)
+$hooks->on('admin.notify', static function (
     string  $subject,
     string  $html,
     ?string $ctaUrl  = null,
@@ -538,7 +571,20 @@ $hooks->addAction('admin.notify', static function (
 }, 10);
 
 // ============================================================
-// 7. Application
+// 7. Session lifetime from settings
+// ============================================================
+
+try {
+    $sessionMgr      = $container->get(SessionManager::class);
+    $settingsSvc     = $container->get(SettingsService::class);
+    $sessionMinutes  = (int) $settingsSvc->get('session_lifetime', 120);
+    if ($sessionMinutes > 0) {
+        $sessionMgr->configure($sessionMinutes);
+    }
+} catch (\Throwable) {}
+
+// ============================================================
+// 8. Application
 // ============================================================
 
 return new Application($container, $router, $config);

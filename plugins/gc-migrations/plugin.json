@@ -1,0 +1,7 @@
+{
+    "name":        "GC Migrations",
+    "description": "Import posts, pages, categories and translations from another GoniCore-compatible database. Reads and writes only content tables — users, settings and roles are never touched.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

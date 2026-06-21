@@ -122,7 +122,7 @@ final class WidgetService
                 break;
             default:
                 // Plugin-provided widget type
-                $this->hooks->doAction('render_widget_' . $type, $widget, $settings);
+                $this->hooks->emit('render_widget_' . $type, $widget, $settings);
                 break;
         }
 

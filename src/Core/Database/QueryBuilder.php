@@ -307,12 +307,40 @@ final class QueryBuilder
             );
         }
 
-        $clone          = clone $this;
-        $clone->wheres[] = [
-            'clause'   => $this->quoteIdentifier($column) . " {$operator} ?",
-            'bindings' => [$value],
-            'boolean'  => $boolean,
-        ];
+        $clone = clone $this;
+
+        // IN / NOT IN require (?,?,…) expansion
+        if (in_array($operator, ['IN', 'NOT IN'], true) && is_array($value)) {
+            $value = array_values($value);
+            if (empty($value)) {
+                // Empty IN → always false; empty NOT IN → always true
+                $clause   = $operator === 'IN' ? '0=1' : '1=1';
+                $bindings = [];
+            } else {
+                $placeholders = implode(', ', array_fill(0, count($value), '?'));
+                $clause   = $this->quoteIdentifier($column) . " {$operator} ({$placeholders})";
+                $bindings = $value;
+            }
+            $clone->wheres[] = [
+                'clause'   => $clause,
+                'bindings' => $bindings,
+                'boolean'  => $boolean,
+            ];
+        } elseif ($value === null && in_array($operator, ['=', '!=', '<>'], true)) {
+            // NULL comparison: SQL requires IS NULL / IS NOT NULL — `col = NULL`
+            // is never true. Translate `= null` and `!=`/`<> null` accordingly.
+            $clone->wheres[] = [
+                'clause'   => $this->quoteIdentifier($column) . ($operator === '=' ? ' IS NULL' : ' IS NOT NULL'),
+                'bindings' => [],
+                'boolean'  => $boolean,
+            ];
+        } else {
+            $clone->wheres[] = [
+                'clause'   => $this->quoteIdentifier($column) . " {$operator} ?",
+                'bindings' => [$value],
+                'boolean'  => $boolean,
+            ];
+        }
 
         return $clone;
     }

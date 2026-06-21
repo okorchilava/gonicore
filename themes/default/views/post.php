@@ -35,8 +35,8 @@ $hasCover = !empty($post['featured_image']);
   <div class="post-hero-inner">
     <?php if (!($isPage ?? false) && $category): ?>
     <div class="post-cat-pill">
-      <a href="<?= e($base) ?>/category/<?= e($category['slug']) ?>">
-        📁 <?= e($category['name']) ?>
+      <a href="<?= e($base) ?>/category/<?= e($category['slug']) ?>" style="display:inline-flex;align-items:center;gap:5px">
+        <span class="material-symbols-outlined" style="font-size:15px">folder</span> <?= e($category['name']) ?>
       </a>
     </div>
     <?php endif ?>

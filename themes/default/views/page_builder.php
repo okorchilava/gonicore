@@ -32,12 +32,16 @@ body{margin:0;padding:0;overflow-x:hidden;align-items:stretch;gap:0}
 /* ── Sections ────────────────────────────────────── */
 .gb-section{width:100%;position:relative;margin:0}
 .gb-section-inner{display:flex;flex-wrap:wrap;max-width:1200px;margin:0 auto;padding:0 20px;box-sizing:border-box;width:100%}
-.gb-full-width>.gb-section-inner{max-width:100%!important;width:100%!important;margin:0!important;padding:0!important}
 
-/* Full-width: all constraints removed (also set via inline style in PHP) */
+/* Full-width: section background bleeds edge-to-edge, but content keeps a
+   responsive side gutter so text/columns don't glue to the screen edges. */
 .gb-full-width{width:100%;overflow:visible}
-.gb-full-width>.gb-section-inner{max-width:100%!important;padding:0!important;width:100%!important;margin:0!important}
+.gb-full-width>.gb-section-inner{max-width:100%!important;width:100%!important;margin:0!important;padding:0!important}
 .gb-full-width .gb-column{padding:0!important;margin:0!important;box-sizing:border-box}
+.gb-full-width .gb-heading,.gb-full-width .gb-text,.gb-full-width .gb-button,
+.gb-full-width .gb-icon-box,.gb-full-width .gb-counter,.gb-full-width .gb-alert{
+  padding-left:clamp(16px,4vw,64px);padding-right:clamp(16px,4vw,64px);
+}
 
 .gb-column{padding:0 12px;box-sizing:border-box;min-width:0}
 .gb-heading{margin-bottom:.5em;line-height:1.25}

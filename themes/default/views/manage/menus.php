@@ -1,5 +1,5 @@
 <?php
-$pageTitle    = 'Menus';
+$pageTitle    = t('menus.title');
 $activeNav    = 'menus';
 $topbarActions = '';
 $menuList     = $menus ?? [];
@@ -19,15 +19,8 @@ $postList = $posts ?? [];
 $catList  = $cats  ?? [];
 ?>
 
-<?php if (!empty($success ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($success) ?>" data-icon="success" style="display:none"></div>
-<?php endif ?>
-<?php if (!empty($error ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($error) ?>" data-icon="error" style="display:none"></div>
-<?php endif ?>
-
 <style>
-.menu-layout{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;max-width:1100px}
+.menu-layout{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
 .menu-tab-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .menu-tab{padding:7px 16px;border-radius:7px;border:1.5px solid var(--border);font-size:13px;font-weight:500;color:var(--text);text-decoration:none;transition:all .15s;cursor:pointer;background:var(--surface)}
 .menu-tab:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
@@ -209,7 +202,7 @@ $catList  = $cats  ?? [];
         </form>
         <form method="POST" action="<?= e($base) ?>/manage/menus/<?= $activeId ?>/delete" style="margin-left:8px">
           <button type="button" class="btn btn-danger" style="font-size:12.5px;padding:6px 12px"
-            onclick="gcConfirm(this,'Delete menu?','All items will be removed.','Delete')">Delete Menu</button>
+            onclick="gcConfirm(this, <?= e(json_encode(t('menus.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)"><?= e(t('admin.delete')) ?></button>
         </form>
       </div>
     </div>
@@ -222,7 +215,7 @@ $catList  = $cats  ?? [];
       <div class="card-body" style="padding:12px">
         <?php if (empty($items)): ?>
         <div style="text-align:center;padding:32px;color:var(--muted)">
-          <div style="font-size:28px;margin-bottom:8px">☰</div>
+          <div style="margin-bottom:8px"><span class="material-symbols-outlined" style="font-size:28px">menu</span></div>
           <div style="font-size:13px">No items yet. Add items from the left panel.</div>
         </div>
         <?php else: ?>
@@ -248,7 +241,7 @@ $catList  = $cats  ?? [];
                   <form method="POST" action="<?= e($base) ?>/manage/menus/items/<?= (int)$it['id'] ?>/delete" style="display:inline">
                     <input type="hidden" name="menu_id" value="<?= $menuId ?>">
                     <button type="button" class="btn btn-danger" style="font-size:11px;padding:3px 8px"
-                      onclick="gcConfirm(this,'Remove item?','','Remove')">✕</button>
+                      onclick="gcConfirm(this, gcI18n.confirmTitle, '', gcI18n.yesDelete)">✕</button>
                   </form>
                 </div>
               </div>
@@ -298,7 +291,7 @@ $catList  = $cats  ?? [];
     <?php else: ?>
     <div class="card">
       <div class="card-body" style="text-align:center;padding:60px 24px;color:var(--muted)">
-        <div style="font-size:36px;margin-bottom:12px">☰</div>
+        <div style="margin-bottom:12px"><span class="material-symbols-outlined" style="font-size:36px">menu</span></div>
         <h3 style="font-size:15px;color:var(--text);margin-bottom:8px">No menu selected</h3>
         <p style="font-size:13px">Create a new menu or select one from the tabs above.</p>
       </div>
@@ -357,7 +350,7 @@ function toggleItemEditor(id) {
         fetch('<?= e($base) ?>/manage/menus/items/reorder', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: ids.map(function(id, i){ return 'ids[' + i + ']=' + id; }).join('&')
+            body: ids.map(function(id, i){ return 'ids[' + i + ']=' + id; }).join('&') + '&_csrf=' + encodeURIComponent(window.gcCsrf || '')
         });
     }
 })();

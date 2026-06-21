@@ -1,43 +1,38 @@
 <?php
-$pageTitle = 'Dashboard';
+$pageTitle = t('dashboard.title');
 $activeNav = 'dashboard';
 $userId    = (int)($user['id'] ?? 0);
 
 ob_start(); ?>
-<a href="<?= e($base) ?>/manage/posts/new" class="topbar-btn">+ New Post</a>
+<a href="<?= e($base) ?>/manage/posts/new" class="topbar-btn">+ <?= e(t('posts.new')) ?></a>
 <?php $topbarActions = ob_get_clean(); ?>
 
 <!-- Stat cards -->
 <div class="stat-grid">
     <div class="stat-card c-green">
-        <div class="stat-card-label">Published</div>
+        <div class="stat-card-label"><?= e(t('dashboard.published')) ?></div>
         <div class="stat-card-value"><?= (int)($stats['posts_published'] ?? 0) ?></div>
-        <div class="stat-card-sub">posts live</div>
-        <div class="stat-card-icon">✦</div>
+        <div class="stat-card-icon material-symbols-outlined">article</div>
     </div>
     <div class="stat-card c-amber">
-        <div class="stat-card-label">Drafts</div>
+        <div class="stat-card-label"><?= e(t('dashboard.drafts')) ?></div>
         <div class="stat-card-value"><?= (int)($stats['posts_draft'] ?? 0) ?></div>
-        <div class="stat-card-sub">not published</div>
-        <div class="stat-card-icon">✎</div>
+        <div class="stat-card-icon material-symbols-outlined">edit_note</div>
     </div>
     <div class="stat-card c-slate">
-        <div class="stat-card-label">Total Posts</div>
+        <div class="stat-card-label"><?= e(t('dashboard.total_posts')) ?></div>
         <div class="stat-card-value"><?= (int)($stats['posts_total'] ?? 0) ?></div>
-        <div class="stat-card-sub">all statuses</div>
-        <div class="stat-card-icon">◫</div>
+        <div class="stat-card-icon material-symbols-outlined">stacks</div>
     </div>
     <div class="stat-card c-blue">
-        <div class="stat-card-label">Categories</div>
+        <div class="stat-card-label"><?= e(t('dashboard.categories')) ?></div>
         <div class="stat-card-value"><?= (int)($stats['categories'] ?? 0) ?></div>
-        <div class="stat-card-sub">content groups</div>
-        <div class="stat-card-icon">◈</div>
+        <div class="stat-card-icon material-symbols-outlined">folder</div>
     </div>
     <div class="stat-card c-violet">
-        <div class="stat-card-label">Users</div>
+        <div class="stat-card-label"><?= e(t('dashboard.users')) ?></div>
         <div class="stat-card-value"><?= (int)($stats['users'] ?? 0) ?></div>
-        <div class="stat-card-sub">registered</div>
-        <div class="stat-card-icon">◉</div>
+        <div class="stat-card-icon material-symbols-outlined">group</div>
     </div>
 </div>
 
@@ -49,9 +44,9 @@ ob_start(); ?>
         <div class="card-header">
             <div class="widget-handle">
                 <span class="drag-icon">⠿</span>
-                <h3>Recent Posts</h3>
+                <h3><?= e(t('dashboard.recent_posts')) ?></h3>
             </div>
-            <a href="<?= e($base) ?>/manage/posts" class="btn btn-ghost" style="font-size:12px">View all</a>
+            <a href="<?= e($base) ?>/manage/posts" class="btn btn-ghost" style="font-size:12px"><?= e(t('admin.all')) ?></a>
         </div>
         <div class="card-body" style="padding:0 20px">
             <?php if (!empty($recentPosts)): ?>
@@ -64,7 +59,7 @@ ob_start(); ?>
             </div>
             <?php endforeach ?>
             <?php else: ?>
-            <div class="empty" style="padding:28px"><div class="empty-icon">✦</div><h3>No posts yet</h3></div>
+            <div class="empty" style="padding:28px"><div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">article</span></div><h3><?= e(t('posts.no_posts')) ?></h3></div>
             <?php endif ?>
         </div>
     </div>
@@ -72,12 +67,12 @@ ob_start(); ?>
     <!-- To-Do -->
     <div class="card widget" data-widget="todo" draggable="true">
         <div class="card-header">
-            <div class="widget-handle"><span class="drag-icon">⠿</span><h3>To-Do</h3></div>
+            <div class="widget-handle"><span class="drag-icon">⠿</span><h3><?= e(t('dashboard.todos')) ?></h3></div>
         </div>
         <div class="card-body">
             <form method="POST" action="<?= e($base) ?>/manage/todos" class="todo-form">
-                <input type="text" name="title" placeholder="Add a task…" required>
-                <button type="submit" class="btn btn-primary">Add</button>
+                <input type="text" name="title" placeholder="<?= e(t('dashboard.add_todo')) ?>" required>
+                <button type="submit" class="btn btn-primary"><?= e(t('admin.add')) ?></button>
             </form>
             <?php if (!empty($todoList)): ?>
             <ul class="todo-list">
@@ -93,13 +88,13 @@ ob_start(); ?>
                     <span><?= e($t['title']) ?></span>
                     <form method="POST" action="<?= e($base) ?>/manage/todos/<?= (int)$t['id'] ?>/delete" style="margin-left:auto">
                         <button type="button" class="todo-del"
-                            onclick="gcConfirm(this,'Remove task?','','Remove','#64748b')">✕</button>
+                            onclick="gcConfirm(this, gcI18n.confirmTitle, '', gcI18n.yesDelete, '#64748b')">✕</button>
                     </form>
                 </li>
                 <?php endforeach ?>
             </ul>
             <?php else: ?>
-            <p style="font-size:13px;color:var(--muted)">No tasks yet.</p>
+            <p style="font-size:13px;color:var(--muted)"><?= e(t('dashboard.no_todos')) ?></p>
             <?php endif ?>
         </div>
     </div>
@@ -107,7 +102,7 @@ ob_start(); ?>
     <!-- Activity Log -->
     <div class="card widget" data-widget="activity" draggable="true">
         <div class="card-header">
-            <div class="widget-handle"><span class="drag-icon">⠿</span><h3>Activity Log</h3></div>
+            <div class="widget-handle"><span class="drag-icon">⠿</span><h3><?= e(t('dashboard.activity')) ?></h3></div>
         </div>
         <div class="card-body" style="padding:0 20px">
             <?php if (!empty($activity)): ?>
@@ -129,7 +124,7 @@ ob_start(); ?>
                 <?php endforeach ?>
             </ul>
             <?php else: ?>
-            <div class="empty" style="padding:24px"><div class="empty-icon">◈</div><h3>No activity yet</h3></div>
+            <div class="empty" style="padding:24px"><div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">history</span></div><h3><?= e(t('dashboard.no_activity')) ?></h3></div>
             <?php endif ?>
         </div>
     </div>
@@ -137,7 +132,7 @@ ob_start(); ?>
     <!-- Server Stats -->
     <div class="card widget" data-widget="server" draggable="true">
         <div class="card-header">
-            <div class="widget-handle"><span class="drag-icon">⠿</span><h3>System &amp; Server</h3></div>
+            <div class="widget-handle"><span class="drag-icon">⠿</span><h3><?= e(t('dashboard.server')) ?></h3></div>
         </div>
         <div class="card-body">
             <?php $s = $server ?? [] ?>

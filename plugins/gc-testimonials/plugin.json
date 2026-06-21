@@ -1,0 +1,7 @@
+{
+    "name":        "GC Testimonials",
+    "description": "Collect and showcase customer reviews. Visitors leave ratings on any page via a shortcode form (moderated); display approved reviews as a responsive grid or an auto-playing slider. Group reviews into campaigns per page.",
+    "version":     "1.0.0",
+    "author":      "GoniCore",
+    "requires":    "1.0.0"
+}

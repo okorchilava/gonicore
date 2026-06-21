@@ -12,7 +12,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e((string)(isset($pageTitle) ? "{$pageTitle} — {$siteName}" : ($siteName ?? 'GoniCore'))) ?></title>
+<?php $__fav = function_exists('gc_setting') ? (string) gc_setting('site_favicon', '') : ''; if ($__fav !== ''): ?>
+<link rel="icon" href="<?= e($base ?? '') ?>/storage/media/<?= e($__fav) ?>">
+<?php endif ?>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
 <style>
+/* ── Material Symbols icons ─────────────────────────── */
+.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal; font-style: normal; line-height: 1;
+    letter-spacing: normal; text-transform: none; white-space: nowrap;
+    direction: ltr; display: inline-flex; align-items: center; justify-content: center;
+    vertical-align: middle; -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased; user-select: none;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
 /* ── Reset & base ─────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -66,12 +82,22 @@ a:hover { text-decoration: underline; }
     justify-content: space-between;
     align-items: center;
 }
-.gc-logo { display: flex; align-items: center; flex-shrink: 0; }
+.gc-logo { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .gc-logo:hover { text-decoration: none; opacity: .85; }
+.gc-logo-img { height: 44px; width: auto; display: block; }
+.gc-brand { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.gc-brand-name { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.3px; white-space: nowrap; }
+.gc-brand-tagline { font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 2px; white-space: nowrap; }
 
+/* Right cluster: menu → cart → language switcher, pushed to the right edge */
+.gc-header-right {
+    display: flex; align-items: center; gap: 1.5rem;
+    min-width: 0; margin-left: auto;
+}
 .gc-nav {
     display: flex; align-items: center; gap: 2rem;
     list-style: none; overflow-x: auto; scrollbar-width: none;
+    min-width: 0;
 }
 .gc-nav::-webkit-scrollbar { display: none; }
 .gc-nav a {
@@ -120,19 +146,18 @@ a:hover { text-decoration: underline; }
 }
 .gc-footer-content {
     max-width: var(--max); margin: 0 auto; padding: 0 24px;
-    display: flex; justify-content: space-between;
-    align-items: flex-start; margin-bottom: 40px; gap: 40px;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 40px; margin-bottom: 40px; align-items: flex-start;
 }
-.gc-footer-brand p { color: #94a3b8; margin-top: 14px; max-width: 280px; font-size: 13px; line-height: 1.7; }
-.gc-footer-links { display: flex; gap: 56px; }
-.gc-footer-group h4 {
+.gc-footer-col h4 {
     font-size: 12px; font-weight: 700; text-transform: uppercase;
     letter-spacing: .8px; color: #f1f5f9; margin-bottom: 16px;
 }
-.gc-footer-group ul { list-style: none; }
-.gc-footer-group ul li { margin-bottom: 10px; }
-.gc-footer-group ul a { color: #94a3b8; text-decoration: none; font-size: 13px; transition: color .15s; }
-.gc-footer-group ul a:hover { color: #10B27C; }
+.gc-footer-col ul { list-style: none; }
+.gc-footer-col ul li { margin-bottom: 10px; }
+.gc-footer-col ul a { color: #94a3b8; text-decoration: none; font-size: 13px; transition: color .15s; }
+.gc-footer-col ul a:hover { color: #10B27C; }
+.gc-footer-col p { color: #94a3b8; margin-top: 14px; font-size: 13px; line-height: 1.7; }
 .gc-footer-bottom {
     max-width: var(--max); margin: 0 auto; padding: 20px 24px 0;
     border-top: 1px solid rgba(255,255,255,.08);
@@ -309,10 +334,10 @@ a:hover { text-decoration: underline; }
     .post-content { padding-left: 16px; padding-right: 16px; font-size: 16px; }
     .wrap { padding: 0 16px; }
     .gc-nav { gap: 1rem; }
-    .gc-footer-content { flex-direction: column; }
-    .gc-footer-links { flex-direction: column; gap: 24px; }
+    .gc-footer-content { grid-template-columns: 1fr; }
 }
 </style>
+<?php if (function_exists('gc_emit')) gc_emit('theme.head'); ?>
 </head>
 <body>
 
@@ -320,51 +345,80 @@ a:hover { text-decoration: underline; }
 <header class="gc-header">
   <div class="gc-header-inner">
 
-    <a href="<?= e($base ?? '') ?>/" class="gc-logo" aria-label="<?= e((string)($siteName ?? 'GoniCore')) ?> Home">
+    <?php
+        // Header branding. Four states:
+        //   logo only · text only · logo + text · nothing → default GoniCore mark.
+        $__logo    = function_exists('gc_setting') ? trim((string) gc_setting('site_logo', ''))    : '';
+        $__name    = function_exists('gc_setting') ? trim((string) gc_setting('site_name', ''))     : '';
+        $__tagline = function_exists('gc_setting') ? trim((string) gc_setting('site_tagline', ''))  : '';
+        $__hasText = ($__name !== '' || $__tagline !== '');
+        $__hasBrand = ($__logo !== '' || $__hasText);
+    ?>
+    <a href="<?= e($base ?? '') ?>/" class="gc-logo" aria-label="<?= e($__name !== '' ? $__name : (string)($siteName ?? 'GoniCore')) ?>">
+      <?php if (!$__hasBrand): ?>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="110" height="55" aria-hidden="true">
         <rect x="15" y="26" width="48" height="48" rx="10" fill="none" stroke="#0F172A" stroke-width="5"/>
         <rect x="27" y="38" width="24" height="24" rx="6" fill="#10B27C"/>
         <text x="80" y="46" font-family="system-ui" font-size="28" font-weight="900" fill="#0F172A">Goni</text>
         <text x="80" y="74" font-family="system-ui" font-size="28" font-weight="300" fill="#10B27C">Core</text>
       </svg>
+      <?php else: ?>
+        <?php if ($__logo !== ''): ?>
+        <img class="gc-logo-img" src="<?= e($base ?? '') ?>/storage/media/<?= e($__logo) ?>" alt="<?= e($__name !== '' ? $__name : 'Logo') ?>">
+        <?php endif ?>
+        <?php if ($__hasText): ?>
+        <span class="gc-brand">
+          <?php if ($__name !== ''): ?><span class="gc-brand-name"><?= e($__name) ?></span><?php endif ?>
+          <?php if ($__tagline !== ''): ?><span class="gc-brand-tagline"><?= e($__tagline) ?></span><?php endif ?>
+        </span>
+        <?php endif ?>
+      <?php endif ?>
     </a>
 
-    <?php
-    $renderedNav = isset($menuService) ? $menuService->render('primary', 'gc-nav') : null;
-    if ($renderedNav): echo $renderedNav;
-    else: ?>
-    <ul class="gc-nav">
-      <li><a href="<?= e($base ?? '') ?>/">Home</a></li>
-      <?php foreach ($categories ?? [] as $cat): ?>
-      <li><a href="<?= e($base ?? '') ?>/category/<?= e($cat['slug']) ?>"><?= e($cat['name']) ?></a></li>
-      <?php endforeach ?>
-    </ul>
-    <?php endif ?>
+    <!-- Right cluster: menu (right-aligned) → cart/store icons → language switcher -->
+    <div class="gc-header-right">
 
-    <?php
-    $activeLangs = isset($langService) ? $langService->activeLanguages() : [];
-    $currentLang = isset($langService) ? $langService->currentCode() : 'en';
-    if (count($activeLangs) > 1): ?>
-    <div class="lang-switcher">
-      <button class="lang-btn" id="langBtn" aria-haspopup="true">
-        <?php foreach ($activeLangs as $lx) {
-            if ($lx['code'] === $currentLang) {
-                echo e($lx['flag'] ?? '🌐') . ' ' . e(strtoupper($lx['code']));
-                break;
-            }
-        } ?> <span style="font-size:10px;opacity:.6">▾</span>
-      </button>
-      <div class="lang-dropdown" id="langDrop" role="menu">
-        <?php foreach ($activeLangs as $lx): ?>
-        <a href="<?= e($base ?? '') ?>/lang/switch/<?= e($lx['code']) ?>"
-           class="lang-option<?= $lx['code'] === $currentLang ? ' active' : '' ?>"
-           role="menuitem">
-          <?= e($lx['flag'] ?? '🌐') ?> <?= e($lx['native'] ?? $lx['name']) ?>
-        </a>
+      <?php
+      $renderedNav = isset($menuService) ? $menuService->render('primary', 'gc-nav') : null;
+      if ($renderedNav): echo $renderedNav;
+      else: ?>
+      <ul class="gc-nav">
+        <li><a href="<?= e($base ?? '') ?>/">Home</a></li>
+        <?php foreach ($categories ?? [] as $cat): ?>
+        <li><a href="<?= e($base ?? '') ?>/category/<?= e($cat['slug']) ?>"><?= e($cat['name']) ?></a></li>
         <?php endforeach ?>
+      </ul>
+      <?php endif ?>
+
+      <?php /* Plugin icons (e.g. the store cart) sit LEFT of the language switcher. */ ?>
+      <?php if (function_exists('gc_emit')) gc_emit('theme.nav.extra', $base ?? ''); ?>
+
+      <?php
+      $activeLangs = isset($langService) ? $langService->activeLanguages() : [];
+      $currentLang = isset($langService) ? $langService->currentCode() : 'en';
+      if (count($activeLangs) > 1): ?>
+      <div class="lang-switcher">
+        <button class="lang-btn" id="langBtn" aria-haspopup="true">
+          <?php foreach ($activeLangs as $lx) {
+              if ($lx['code'] === $currentLang) {
+                  echo e($lx['flag'] ?? '🌐') . ' ' . e(strtoupper($lx['code']));
+                  break;
+              }
+          } ?> <span class="material-symbols-outlined" style="font-size:16px;opacity:.6">expand_more</span>
+        </button>
+        <div class="lang-dropdown" id="langDrop" role="menu">
+          <?php foreach ($activeLangs as $lx): ?>
+          <a href="<?= e($base ?? '') ?>/lang/switch/<?= e($lx['code']) ?>"
+             class="lang-option<?= $lx['code'] === $currentLang ? ' active' : '' ?>"
+             role="menuitem">
+            <?= e($lx['flag'] ?? '🌐') ?> <?= e($lx['native'] ?? $lx['name']) ?>
+          </a>
+          <?php endforeach ?>
+        </div>
       </div>
+      <?php endif ?>
+
     </div>
-    <?php endif ?>
 
   </div>
 </header>

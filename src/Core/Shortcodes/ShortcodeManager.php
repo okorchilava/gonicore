@@ -24,7 +24,7 @@ use GoniCore\Shared\Contracts\ShortcodeInterface;
  * ─────────────────────────────
  *   Apply via a filter so any plugin can tap in:
  *
- *   $hooks->addFilter('post.content', fn(string $c) => $shortcodes->process($c));
+ *   gc_filter('post.content', fn(string $c) => $shortcodes->process($c));
  */
 final class ShortcodeManager
 {

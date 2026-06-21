@@ -23,8 +23,8 @@ spl_autoload_register(function (string $class) use ($pluginDir): void {
 
 try {
     $conn = $container->get(Connection::class);
-    $existing = $conn->query("SHOW TABLES LIKE 'ps_sliders'");
-    if (empty($existing)) {
+    $existing = $conn->query("SELECT COUNT(*) AS cnt FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ps_sliders'");
+    if ((int)($existing[0]['cnt'] ?? 0) === 0) {
         $migration = require $pluginDir . '/database/migration.php';
         $migration->up($conn);
     }
@@ -70,7 +70,7 @@ $router->get('/api/v1/sliders/{id}', [AdminController::class, 'apiGet']);
 
 // ── Sidebar nav hook ──────────────────────────────────────────────────────────
 
-$hooks->addAction('manage.sidebar.nav', static function (string $base, string $activeNav): void {
+gc_on('manage.sidebar.nav', static function (string $base, string $activeNav): void {
     $isActive = str_starts_with($activeNav, 'slider') ? 'active' : '';
     echo '<li><a href="' . htmlspecialchars($base . '/manage/sliders', ENT_QUOTES) . '" class="' . $isActive . '">'
         . '<span class="nav-icon">🎞</span> GoniSlider'

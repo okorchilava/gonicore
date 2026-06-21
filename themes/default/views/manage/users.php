@@ -1,24 +1,17 @@
 <?php
-$pageTitle = 'Users';
+$pageTitle = t('users.title');
 $activeNav = 'users';
 $userList  = $users ?? [];
 $currentId = (int)($currentUser['id'] ?? 0);
 
 ob_start(); ?>
-<a href="<?= e($base) ?>/manage/users/new" class="topbar-btn">+ New User</a>
+<a href="<?= e($base) ?>/manage/users/new" class="topbar-btn">+ <?= e(t('users.new')) ?></a>
 <?php $topbarActions = ob_get_clean(); ?>
-
-<?php if (!empty($success ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($success) ?>" data-icon="success" style="display:none"></div>
-<?php endif ?>
-<?php if (!empty($error ?? null)): ?>
-<div id="gc-flash" data-msg="<?= e($error) ?>" data-icon="error" style="display:none"></div>
-<?php endif ?>
 
 <div class="card">
     <div class="card-header">
-        <h3><?= count($userList) ?> Users</h3>
-        <input type="text" id="userSearch" placeholder="Search…"
+        <h3><?= count($userList) ?> <?= e(t('users.title')) ?></h3>
+        <input type="text" id="userSearch" placeholder="<?= e(t('admin.search')) ?>…"
                style="padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;width:200px"
                oninput="filterUsers()">
     </div>
@@ -27,12 +20,12 @@ ob_start(); ?>
         <table id="usersTable">
             <thead>
                 <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Joined</th>
-                    <th style="text-align:right">Actions</th>
+                    <th><?= e(t('users.name')) ?></th>
+                    <th><?= e(t('users.email')) ?></th>
+                    <th><?= e(t('users.username')) ?></th>
+                    <th><?= e(t('users.role')) ?></th>
+                    <th><?= e(t('users.joined')) ?></th>
+                    <th style="text-align:right"><?= e(t('admin.actions')) ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -68,14 +61,14 @@ ob_start(); ?>
                     <td style="color:var(--muted);font-size:12px;white-space:nowrap"><?= e(fmt_date((string)($u['created_at'] ?? ''))) ?></td>
                     <td style="text-align:right;white-space:nowrap">
                         <a href="<?= e($base) ?>/manage/users/<?= (int)$u['id'] ?>/edit"
-                           class="btn btn-ghost" style="font-size:11px;padding:3px 10px;margin-right:4px">Edit</a>
+                           class="btn btn-ghost" style="font-size:11px;padding:3px 10px;margin-right:4px"><?= e(t('admin.edit')) ?></a>
                         <?php if (!$isMe): ?>
                         <form method="POST" action="<?= e($base) ?>/manage/users/<?= (int)$u['id'] ?>/delete" style="display:inline">
                             <button type="button" class="btn btn-danger" style="font-size:11px;padding:3px 10px"
-                                onclick="gcConfirm(this,'Delete user?','<?= e(addslashes($u['name'])) ?> will be permanently removed.','Delete')">Delete</button>
+                                onclick="gcConfirm(this, <?= e(json_encode(t('users.confirm_delete'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode('«' . $u['name'] . '» — ' . t('admin.cannot_undo'), JSON_UNESCAPED_UNICODE)) ?>, <?= e(json_encode(t('admin.yes_delete'), JSON_UNESCAPED_UNICODE)) ?>)"><?= e(t('admin.delete')) ?></button>
                         </form>
                         <?php else: ?>
-                        <a href="<?= e($base) ?>/manage/profile" class="btn btn-ghost" style="font-size:11px;padding:3px 10px">Profile</a>
+                        <a href="<?= e($base) ?>/manage/profile" class="btn btn-ghost" style="font-size:11px;padding:3px 10px"><?= e(t('nav.profile')) ?></a>
                         <?php endif ?>
                     </td>
                 </tr>
@@ -83,7 +76,7 @@ ob_start(); ?>
             </tbody>
         </table>
         <?php else: ?>
-        <div class="empty"><div class="empty-icon">◉</div><h3>No users found</h3></div>
+        <div class="empty"><div class="empty-icon"><span class="material-symbols-outlined" style="font-size:36px">group</span></div><h3><?= e(t('users.no_users')) ?></h3></div>
         <?php endif ?>
     </div>
 </div>

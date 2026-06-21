@@ -45,6 +45,43 @@ final class StoreService
         }
     }
 
+    // ── Discount helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Return the currently active price for a product/variation row.
+     * Respects sale_from / sale_to date windows if set.
+     */
+    public function effectivePrice(array $product): float
+    {
+        if (!empty($product['sale_price'])) {
+            $now  = time();
+            $from = !empty($product['sale_from']) ? strtotime((string)$product['sale_from']) : 0;
+            $to   = !empty($product['sale_to'])   ? strtotime((string)$product['sale_to'])   : PHP_INT_MAX;
+            if ($now >= $from && $now <= $to) {
+                return (float)$product['sale_price'];
+            }
+        }
+        return (float)$product['price'];
+    }
+
+    /**
+     * Returns true if the product is currently on sale.
+     */
+    public function isOnSale(array $product): bool
+    {
+        return $this->effectivePrice($product) < (float)$product['price'];
+    }
+
+    /**
+     * Discount percentage (0–100), or 0 if not on sale.
+     */
+    public function discountPercent(array $product): int
+    {
+        $orig = (float)$product['price'];
+        if ($orig <= 0 || !$this->isOnSale($product)) return 0;
+        return (int) round((1 - $this->effectivePrice($product) / $orig) * 100);
+    }
+
     // ── Price formatting ──────────────────────────────────────────────────────
 
     public function formatPrice(float $amount): string
@@ -240,20 +277,21 @@ final class StoreService
         } else {
             $p = $this->getProduct($productId);
             if (!$p) return;
-            $price = $p['sale_price'] ?? $p['price'];
+            $price = $this->effectivePrice($p);
             if ($variationId) {
                 $v = $this->qb->table('gs_variations')->where('id','=',$variationId)->first();
                 if ($v) { $price = $v['sale_price'] ?? $v['price']; $attrs = json_decode((string)$v['attributes'],true) ?: $attrs; }
             }
             $cart[$key] = [
-                'product_id'   => $productId,
-                'variation_id' => $variationId,
-                'name'         => $p['name'],
-                'sku'          => $p['sku'],
-                'price'        => (float)$price,
-                'image'        => ($p['images'][0] ?? ''),
-                'qty'          => $qty,
-                'attrs'        => $attrs,
+                'product_id'     => $productId,
+                'variation_id'   => $variationId,
+                'name'           => $p['name'],
+                'sku'            => $p['sku'],
+                'price'          => (float)$price,
+                'original_price' => (float)$p['price'],
+                'image'          => ($p['images'][0] ?? ''),
+                'qty'            => $qty,
+                'attrs'          => $attrs,
             ];
         }
         $_SESSION['gs_cart'] = $cart;

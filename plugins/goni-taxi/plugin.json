@@ -1,0 +1,7 @@
+{
+    "name": "GoniTaxi",
+    "slug": "goni-taxi",
+    "version": "1.0.0",
+    "description": "Taxi booking, fare calculation and dispatch for GoniCore.",
+    "author": "GoniCore"
+}

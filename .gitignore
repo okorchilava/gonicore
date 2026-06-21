@@ -7,3 +7,14 @@ Thumbs.db
 /storage/
 *.cache
 /.claude/
+
+# Backups & local archives
+*.zip
+
+# Secrets / local notes
+/gosmsapihash.txt
+
+# User uploads (not source — deployed/managed separately)
+/public/storage/media/
+/public/uploads/delivery/
+/uploads/

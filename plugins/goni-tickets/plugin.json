@@ -1,0 +1,7 @@
+{
+    "name": "GoniTickets",
+    "slug": "goni-tickets",
+    "version": "1.0.0",
+    "description": "Event ticket sales and management for GoniCore.",
+    "author": "GoniCore"
+}

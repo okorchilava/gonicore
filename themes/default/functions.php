@@ -54,3 +54,4 @@ WidgetService::registerArea(
     name:        'Footer — Column 3',
     description: 'Third column of the site footer.',
 );
+
